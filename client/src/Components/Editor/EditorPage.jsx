@@ -1,9 +1,16 @@
 import React from 'react'
+import Editor from './EditorWindow'
+import Sidebar from './Sidebar'
 
 const EditorPage = () => {
-  return (
-    <div>EditorPage</div>
-  )
+
+      
+    return (
+      <>
+        <Editor />
+        <Sidebar />
+      </>
+    )
 }
 
 export default EditorPage
