@@ -1,7 +1,7 @@
 import { createContext } from "react";
 
 
-const fileContext = createContext(null)
+export const fileContext = createContext(null)
 
 const fileProvider = ({children}) =>{
     const [fileName, setFileName] = useState('');
@@ -13,3 +13,5 @@ const fileProvider = ({children}) =>{
         </fileContext.Provider>
     )
 }
+
+export default fileProvider
