@@ -1,14 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import * as Monaco from 'monaco-editor'
 import {Editor, useMonaco} from '@monaco-editor/react'
 import { initializeSocket } from '../../Connection/socket'
 import { useLocation, useParams } from 'react-router-dom'
-
-
+import { inputContext } from '../../Context/CodeInput'
+import { CodeDataContext } from '../Sidebar/CodeData'
 
 
 const EditorWindow = () => {
-
+    const {languageName} = useContext(inputContext)
     const socketRef = useRef(null)
 
     
@@ -16,7 +16,7 @@ const EditorWindow = () => {
     const editorRef = useRef()
     const monaco = useMonaco()
 
-    const [data, setData] = useState('')
+    const {data, setData} = useContext(CodeDataContext)
 
     const onMount = (editor) =>{
         if (!editor) return;
@@ -103,9 +103,9 @@ const EditorWindow = () => {
         
         <div>
         <Editor
+            // width= "70%" 
             height="100vh"
-            width= "70%" 
-            language='javascript'
+            language={languageName}
             theme='Cobalt2'           
             onMount={onMount}
             

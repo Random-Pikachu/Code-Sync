@@ -7,8 +7,14 @@ const EditorPage = () => {
       
     return (
       <>
-        <Editor />
-        <Sidebar />
+        <div className='flex flex-row'>
+          <div className="flex-5">
+            <Editor />
+          </div>
+          <div className="flex-3">
+            <Sidebar />
+          </div>
+        </div>
       </>
     )
 }
