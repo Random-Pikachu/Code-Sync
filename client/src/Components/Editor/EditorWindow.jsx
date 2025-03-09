@@ -105,7 +105,7 @@ const EditorWindow = () => {
         <Editor
             // width= "70%" 
             height="100vh"
-            language={languageName}
+            language={languageName === 'c++' ? 'cpp' : languageName}
             theme='Cobalt2'           
             onMount={onMount}
             
