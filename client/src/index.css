@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+
+.remote-cursor {
+  width: 2px;
+  background-color: red;
+  position: absolute;
+}
+
+
 @theme {
     --animate-move: move 3s ease-out infinite;
     @keyframes move {
@@ -13,4 +21,4 @@
         transform: translateY(0);
       }
     }
-  }
+}

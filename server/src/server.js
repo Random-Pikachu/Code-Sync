@@ -68,16 +68,18 @@ wsServer.on('connection', (socket) => {
     
     socket.on('code-change', ({RoomID, value}) => {
         console.log(value)
-        wsServer.to(RoomID).emit('code-change', {value})
+        socket.to(RoomID).emit('code-change', {value})
     })
     
     socket.on('sync-code', ({RoomID, value}) => {
         console.log(value)
-        wsServer.to(RoomID).emit('sync-code', {value})
+        socket.to(RoomID).emit('sync-code', {value})
     })
 
 
-    
+    socket.on('cursor-position', ({RoomID, position, userName}) => {
+        socket.to(RoomID).emit("cursor-position", {position, userName})
+    })
 
     socket.on('disconnect', ()=>{
         console.log(`Client Disconnected: ${socket.id}`)
@@ -86,6 +88,10 @@ wsServer.on('connection', (socket) => {
             clientList.splice(index, 1)
         }
 
+        const userName = roomUser[socket.id]
+        delete roomUser[socket.id]
+
+        
         console.log(clientList)
 
         socket.leave()
