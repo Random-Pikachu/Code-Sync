@@ -6,6 +6,7 @@ import { useLocation, useParams } from 'react-router-dom'
 import { inputContext } from '../../Context/CodeInput'
 import { CodeDataContext } from '../Sidebar/CodeData'
 import randomcolor from 'randomcolor'
+import hexRgb from 'hex-rgb'
 
 
 const EditorWindow = () => {
@@ -54,12 +55,12 @@ const EditorWindow = () => {
                 }
             })
 
-            addCursorStyle(userName, userColor)
+            addCursorStyle(userName, userColor, position.lineNumber)
         })
 
 
         if(editorRef.current){
-            const oldDecorations = Object.values(cursorDecorations).flat()
+            const oldDecorations = Object.values(cursorDecorations)
             const newDecorations = editorRef.current.deltaDecorations(oldDecorations, decorations)
 
 
@@ -71,7 +72,7 @@ const EditorWindow = () => {
     }
 
 
-    const addCursorStyle = (userName, userColor) => {
+    const addCursorStyle = (userName, userColor, lineNumber) => {
         const styleId = `cursor-${userName.replace(/\s+/g, '-')}`
         let styelEl = document.getElementById(styleId)
 
@@ -81,22 +82,35 @@ const EditorWindow = () => {
             document.head.appendChild(styelEl)
         }
 
+        const bgColor = hexToRgb(userColor, 0.5)
+        const topPosition = lineNumber === 1 ? "24px" : "-24px"
+
         styelEl.innerHTML = `
             .cursor-${userName.replace(/\s+/g, '-')} {
-                background-color: ${userColor};
-                width: 2px !important;
+                background-color: ${bgColor};
+                width: 4px !important;
             }
 
             .cursor-decoration::before {
-                content: '';
+                content: '${userName}';
                 position: absolute;
-                width: 2px;
-                height: 18px;
-                background-color: inherit;
+                width: ${userName.length}+'px';
+                color: white;
+                height: 26px;
+                top: ${topPosition};
+                background-color: ${bgColor};
                 z-index: 1;
             }
         `
     }
+    
+    const hexToRgb = (hex, opacity) => {
+        hex = hex.replace(/^#/, "")
+        let r = parseInt(hex.substring(0, 2), 16)
+        let g = parseInt(hex.substring(2, 4), 16)
+        let b = parseInt(hex.substring(4, 6), 16)
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`
+    };
 
     const onMount = (editor) =>{
         if (!editor) return;
@@ -104,7 +118,7 @@ const EditorWindow = () => {
 
 
         editor.onDidChangeCursorPosition((event) => {
-            // console.log(event);
+            console.log(event);
             const position = event.position;
             // console.log("Position of cursor: ", position)
 
