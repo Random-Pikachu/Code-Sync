@@ -22,13 +22,16 @@ const EditorWindow = () => {
     const [cursorDecorations, setCursorDecorations] = useState({})
     const userColorsRef = useRef({})
 
+
     const {data, setData} = useContext(CodeDataContext)
+
+
 
 
     const updateCursorDecorations = () =>{
         if (!editorRef.current) return;
         
-        const decorations = []
+        const newDecorationMap = {}
 
         Object.keys(peerPosition).forEach((userName) => {
             if (userName === location.state.userName) return
@@ -45,30 +48,38 @@ const EditorWindow = () => {
             }
             const userColor = userColorsRef.current[userName];
 
-            decorations.push({
+            const decoration = {
                 range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column+1),
 
                 options: {
                     className: `cursor-${userName.replace(/\s+/g, "-")}`,
                     hoverMessage: {value: userName},
-                    beforeContentClassName: 'cursor-decoration',
+                    // beforeContentClassName: 'cursor-decoration',
                 }
-            })
+            }
+            
+
+            newDecorationMap[userName] = [decoration]
 
             addCursorStyle(userName, userColor, position.lineNumber)
         })
 
+        const updatedDecorations = {}
 
-        if(editorRef.current){
-            const oldDecorations = Object.values(cursorDecorations)
-            const newDecorations = editorRef.current.deltaDecorations(oldDecorations, decorations)
+        Object.keys(newDecorationMap).forEach(userName => {
+            const oldUserDecorations = cursorDecorations[userName] || []
+            const newUserDecorations = editorRef.current.deltaDecorations(oldUserDecorations, newDecorationMap[userName])
 
+            updatedDecorations[userName] = newUserDecorations
+        })
 
-            setCursorDecorations(prev => ({
-                ...prev,
-                cursors: newDecorations
-            }))
-        }
+        Object.keys(cursorDecorations).forEach(userName => {
+            if (!newDecorationMap[userName]) {
+                editorRef.current.deltaDecorations(cursorDecorations[userName], [])
+            }
+        })
+
+        setCursorDecorations(updatedDecorations)
     }
 
 
@@ -89,20 +100,42 @@ const EditorWindow = () => {
             .cursor-${userName.replace(/\s+/g, '-')} {
                 background-color: ${bgColor};
                 width: 4px !important;
+                position: relative;
             }
 
-            .cursor-decoration::before {
+            .cursor-${userName.replace(/\s+/g, '-')}::after{
                 content: '${userName}';
                 position: absolute;
-                width: ${userName.length}+'px';
+                min-width: ${userName.length * 8}px;
+                padding: 2px 4px;
                 color: white;
                 height: 26px;
-                top: ${topPosition};
+                top: ${lineNumber === 1 ? "24px" : "-24px"};
+                left: 0;
                 background-color: ${bgColor};
-                z-index: 1;
+                z-index: ${1000 + lineNumber};
+                white-space: nowrap;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 3px;
             }
+
+            
         `
     }
+
+        // .cursor-decoration::before {
+        //     content: '${userName}';
+        //     position: absolute;
+        //     width: ${userName.length}+'px';
+        //     color: white;
+        //     height: 26px;
+        //     top: ${topPosition};
+        //     background-color: ${bgColor};
+        //     z-index: z-index: ${1000 + lineNumber + Math.floor(Math.random() * 11)};
+        // }
     
     const hexToRgb = (hex, opacity) => {
         hex = hex.replace(/^#/, "")
