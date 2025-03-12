@@ -89,6 +89,7 @@ wsServer.on('connection', (socket) => {
         }
 
         const userName = roomUser[socket.id]
+        socket.emit('user-disconnected', ({userName}))
         delete roomUser[socket.id]
 
         
