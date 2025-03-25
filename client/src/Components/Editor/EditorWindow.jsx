@@ -110,7 +110,7 @@ const EditorWindow = () => {
                 padding: 2px 4px;
                 color: white;
                 height: 26px;
-                top: ${lineNumber === 1 ? "24px" : "-24px"};
+                top: ${topPosition};
                 left: 0;
                 background-color: ${bgColor};
                 z-index: ${1000 + lineNumber};
@@ -151,7 +151,7 @@ const EditorWindow = () => {
 
 
         editor.onDidChangeCursorPosition((event) => {
-            console.log(event);
+            // console.log(event);
             const position = event.position;
             // console.log("Position of cursor: ", position)
 
