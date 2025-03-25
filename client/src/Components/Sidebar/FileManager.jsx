@@ -1,10 +1,12 @@
 import React from 'react'
+import FileTree from './FileTree'
+import data from './data.json'
 
 const FileManager = () => {
   return (
     <>
-        <div className='bg-gray-800'>
-
+        <div className=''>
+          <FileTree data = {data}/>
         </div>
     </>
   )
