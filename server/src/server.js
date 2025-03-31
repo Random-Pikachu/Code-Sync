@@ -38,14 +38,14 @@ const roomUser = {}
 const createDefaultFileStructure = () => {
     const idObj = new ShortUniqueId({length: 6})
     const currId = idObj.rnd()
-    // return [{
-    //     id: currId,
-    //     name: "index.js",
-    //     isFolder: false,
-    //     content: ""
-    // }]
+    return [{
+        id: currId,
+        name: "index.js",
+        isFolder: false,
+        content: ""
+    }]
 
-    return []
+    // return []
 }
 
 
