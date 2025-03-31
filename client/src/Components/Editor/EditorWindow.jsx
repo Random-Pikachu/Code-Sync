@@ -23,8 +23,8 @@ const EditorWindow = () => {
     const userColorsRef = useRef({})
 
 
-    const {data, setData} = useContext(CodeDataContext)
-
+    const {data, setData, fileId} = useContext(CodeDataContext)
+    
 
 
 
@@ -278,7 +278,6 @@ const EditorWindow = () => {
                     [userName]: position
                 }))
             })  
-
             
         };
 
@@ -314,7 +313,7 @@ const EditorWindow = () => {
   return (
     <>
         
-        <div>
+        <div id = 'code-editor'>
         <Editor
             // width= "70%" 
             height="100vh"
@@ -329,7 +328,13 @@ const EditorWindow = () => {
                 socketRef.current.emit('code-change', {
                     RoomID, 
                     value
-                })                
+                })      
+                
+                socketRef.current.emit('update-file-content', {
+                    RoomID,
+                    fileId,
+                    data
+                })
             }}
 
             options={{

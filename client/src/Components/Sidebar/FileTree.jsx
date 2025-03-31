@@ -1,10 +1,11 @@
-import React, {useEffect, useState, useRef} from 'react'
+import React, {useEffect, useState, useRef, useContext} from 'react'
 import ShortUniqueId from 'short-unique-id';
 import  { getClass } from 'file-icons-js'
 import { useLocation, useParams } from "react-router-dom"
 import 'file-icons-js/css/style.css'
 
 import { initializeSocket } from '../../Connection/socket';
+import { CodeDataContext } from './CodeData';
 
 
 
@@ -12,7 +13,8 @@ import { initializeSocket } from '../../Connection/socket';
 const FileTree = ({data}) => {
 
     const [isOpen, setIsOpen] = useState({}) // {src: true}
-    const [isSelectedId, setIsSelectedId] = useState(null)
+    // const [isSelectedId, setIsSelectedId] = useState(null)
+    const {fileId, setFileId} = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
 
     const socketRef = useRef(null)
@@ -21,14 +23,43 @@ const FileTree = ({data}) => {
 
 
 
-    const handleClickOutside = (e) =>{
-        //console.log(e); //we displayed the tree elements using span toh agar clicked area span nahi hai iska matlab vo outside file tree hai
+    // const handleClickOutside = (e) =>{
+    //     // console.log(e); //we displayed the tree elements using span toh agar clicked area span nahi hai iska matlab vo outside file tree hai
+    //     const fileTree = document.getElementById('file-tree')
 
-        if (e.srcElement.localName !== 'span') setIsSelectedId(null)
-    }
+    //     if (fileTree && fileTree.contains(e.target)){
+            
+    //             const isFileItem = e.target.classList;
+    //             var elements = [...isFileItem];
+    //             console.log(elements)
+    
+    //      
+    //             if (!elements.includes('file-tree-item')) {
+    //                 setFileId(null);
+    //             }
+
+    //             else {
+    //                 
+    //                 console.log("Clicked on blank space inside file tree");
+    //                 setFileId(null);
+    //             }
+            
+    //     }
+    // }
+
+    const handleClickOutside = (e) => {
+        const fileTree = document.getElementById('file-tree')
+        const codeEditor = document.getElementById('code-editor')
+        
+        if (fileTree && !fileTree.contains(e.target) && codeEditor && !codeEditor.contains(e.target)) {
+            setFileId(null)
+        }
+    };
+    
 
     useEffect(() => {
-        document.addEventListener('click', handleClickOutside);
+            document.addEventListener('click', handleClickOutside);
+
         return () => {
             document.removeEventListener('click', handleClickOutside);
         };
@@ -99,13 +130,13 @@ const FileTree = ({data}) => {
 
 
                     <span onClick={() =>{ 
-                        setIsSelectedId(struct.id);
+                        setFileId(struct.id);
                         setIsOpen((prev) => ({
                             ...prev,
                             [struct.name] : !prev[struct.name]
                         }))}                        
                         }
-                        className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px]'
+                        className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px] file-tree-item'
                         >{struct.isFolder ? (<svg 
                             stroke="currentColor" 
                             fill="currentColor" 
@@ -135,8 +166,8 @@ const FileTree = ({data}) => {
                 </div>
             ))}
         </div>
-            {/* <span>selected ID: {isSelectedId}</span> */}
             </div>
+            {/* {console.log('Selected Id:', fileId)} */}
             </>
         )
     }
@@ -177,7 +208,7 @@ const FileTree = ({data}) => {
     const createFolder = () =>{
         const folderName = prompt("Enter the folder name: ")
         // console.log("Folder Name: ", folderName)
-        let parentId = isSelectedId;
+        let parentId = fileId;
         const idObj = new ShortUniqueId({length: 6})
         if (!folderName) return
         
@@ -208,7 +239,7 @@ const FileTree = ({data}) => {
     const createFile = () => {
         const fileName = prompt("Enter the file name: ")
         // console.log("Folder Name: ", folderName)
-        let parentId = isSelectedId;
+        let parentId = fileId;
         const idObj = new ShortUniqueId({length: 6})
         if (!fileName) return
         
@@ -303,7 +334,7 @@ const FileTree = ({data}) => {
             
             
 
-            <div className='px-17 mt-4'>
+            <div className='px-17 mt-4' id = 'file-tree'>
             {printTree(givenData)}
             </div>
     </>
