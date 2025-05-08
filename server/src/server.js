@@ -139,41 +139,76 @@ wsServer.on('connection', (socket) => {
     })
 
 
-    socket.on('update-file-content', async({RoomID, fileId, newContent}) =>{
-        try{
+    socket.on('update-file-content', async({RoomID, fileId, newContent}) => {
+        try {
             let room = await data.findOne({roomId: RoomID})
             if (!room) return
-
+    
             const updateFileContent = (fileStruct, fileId, newContent) => {
                 return fileStruct.map(item => {
-                    if (item.id === fileId && !item.isFolder){
+                    if (item.id === fileId && !item.isFolder) {
+                        console.log(`Updating File ID: ${fileId}, New Content: ${newContent}`)
                         return {...item, content: newContent}
                     }
-
-                    if (item.isFolder && item.children){
-                        return{...item, children: updateFileContent(item.children, fileId, newContent)}
+    
+                    if (item.isFolder && item.children) {
+                        return {...item, children: updateFileContent(item.children, fileId, newContent)}
                     }
-
+    
                     return item
                 })
             }
-
-
-            const updateFileStruct = updateFileContent(room.fileStruct, fileId, newContent)
-
-            await room.findOneAndUpdate(
-                {roomId: RoomID},
-                {fileStruct: updateFileStruct}
-            )
-
-            socket.to(RoomID).emit('file-content-updated', {RoomID, newContent});
+    
+            const updatedFileStruct = updateFileContent(room.fileStruct, fileId, newContent)
+            console.log("Updated File Structure:", JSON.stringify(updatedFileStruct, null, 2))
+    
+            // Replace the direct MongoDB update with this approach
+            // await data.findOneAndUpdate(
+            //     { roomId: RoomID },
+            //     { $set: { fileStruct: updatedFileStruct } },
+            //     { new: true }
+            // )
+            room.fileStruct = updatedFileStruct;
+            await room.save()
+    
+            socket.to(RoomID).emit('file-content-updated', {fileId, newContent});
         }   
-
-        catch(error){
+        catch(error) {
             console.log("Error updating file content in db: ", error)
         }
     })
+    
 
+    socket.on('file-open', async ({RoomID, fileId}) => {
+        console.log("RoomId: ", RoomID, "File ID: ", fileId)
+        try{
+            const room = await data.findOne({roomId: RoomID})
+            if (!room) return
+
+
+            const fileById = (fileStruct, fileId) => {
+                for (const file of fileStruct) {
+                    if (file.id === fileId && !file.isFolder) return file
+
+                    if (file.isFolder && file.children){
+                        const found = fileById(file.children, fileId)
+                        if (found) return found
+                    }
+                }
+
+                return null
+            }
+            let fileData = fileById(room.fileStruct, fileId)
+            socket.to(RoomID).emit("file-open", {file: fileData})
+        }
+
+        catch(err){
+            console.log("Error while opening the file: ", err)
+        }
+
+
+
+    })
 
 
     

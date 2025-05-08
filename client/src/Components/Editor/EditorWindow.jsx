@@ -13,6 +13,8 @@ const EditorWindow = () => {
     const {languageName} = useContext(inputContext)
     const socketRef = useRef(null)
 
+    const [openTabs, setOpenTabs] = useState([])
+    const [activeTabId, setActiveTabId] = useState(null)
     
 
     const editorRef = useRef()
@@ -23,7 +25,7 @@ const EditorWindow = () => {
     const userColorsRef = useRef({})
 
 
-    const {data, setData, fileId} = useContext(CodeDataContext)
+    const {data, setData, fileId, fileStruct, RoomId, setRoomId} = useContext(CodeDataContext)
     
 
 
@@ -203,8 +205,17 @@ const EditorWindow = () => {
     const {RoomID} = useParams()
 
     useEffect(() => {
+        setRoomId(RoomID)
+    }, [RoomId])
+
+    
+    
+
+    useEffect(() => {
         const setupSocket = async () => {
             if (socketRef.current) socketRef.current.disconnect()
+            
+
             
             socketRef.current = await initializeSocket()
 
@@ -248,6 +259,10 @@ const EditorWindow = () => {
                     }, 0);
                 }
             } )
+
+            socketRef.current.on('file-open', ({file}) => {
+                setData(file.content)
+            })
 
 
             socketRef.current.on('user-disconnected', ({userName}) => {
@@ -318,7 +333,7 @@ const EditorWindow = () => {
             // width= "70%" 
             height="100vh"
             language={languageName === 'c++' ? 'cpp' : languageName}
-            theme='Cobalt2'           
+            theme='Cobalt2'
             onMount={onMount}
 
             value={data}
@@ -329,11 +344,11 @@ const EditorWindow = () => {
                     RoomID, 
                     value
                 })      
-                
+                console.log("RoomID: ", RoomID, "Type: ", typeof(RoomID))
                 socketRef.current.emit('update-file-content', {
                     RoomID,
                     fileId,
-                    data
+                    newContent: value
                 })
             }}
 
