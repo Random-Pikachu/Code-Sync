@@ -14,7 +14,7 @@ const FileTree = ({data}) => {
 
     const [isOpen, setIsOpen] = useState({}) // {src: true}
     // const [isSelectedId, setIsSelectedId] = useState(null)
-    const {fileId, setFileId} = useContext(CodeDataContext)
+    const {fileId, setFileId, fileStruct, setFileStruct, roomId} = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
 
     const socketRef = useRef(null)
@@ -77,10 +77,14 @@ const FileTree = ({data}) => {
             socketRef.current.on('init-file-structure', (fileStruct) =>{
                 console.log("Received Initial File Structure:", fileStruct);
                 setGivenData(fileStruct)
+                setFileStruct(fileStruct)
             })
 
             socketRef.current.on('update-file-struct', (newFileStruct) =>{
+                console.log("First: ", newFileStruct)
                 setGivenData(newFileStruct)
+                setFileStruct(newFileStruct)
+                console.log("Second: ", fileStruct)
             })
 
 
@@ -99,7 +103,6 @@ const FileTree = ({data}) => {
             socketRef.current.emit('update-file-struct', {RoomID, newFileStruct: updatedFileStruct})
         }
     }
-
 
     const printTree = (data) =>{
 
@@ -131,10 +134,18 @@ const FileTree = ({data}) => {
 
                     <span onClick={() =>{ 
                         setFileId(struct.id);
+                        
+                        if (socketRef.current && !struct.ifFolder){
+                            socketRef.current.emit("file-open", {RoomID, fileId: struct.id})
+                        }
+
+                        console.log(givenData)
                         setIsOpen((prev) => ({
                             ...prev,
                             [struct.name] : !prev[struct.name]
-                        }))}                        
+                        }))
+                    
+                    }                        
                         }
                         className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px] file-tree-item'
                         >{struct.isFolder ? (<svg 
@@ -167,7 +178,7 @@ const FileTree = ({data}) => {
             ))}
         </div>
             </div>
-            {/* {console.log('Selected Id:', fileId)} */}
+            {console.log('Selected Id:', fileId, "RoomId: ", RoomID)}
             </>
         )
     }
@@ -222,6 +233,8 @@ const FileTree = ({data}) => {
             children: []
         }
 
+        const currentFileStruct = JSON.parse(JSON.stringify(givenData))
+
         let updatedFileStruct
         if (isFileSelected(givenData, parentId) || parentId === null) {
             updatedFileStruct = [...givenData, newFolder]
@@ -232,6 +245,8 @@ const FileTree = ({data}) => {
             updatedFileStruct = addFolder(givenData, parentId, newFolder)
             setGivenData(updatedFileStruct)
         }
+        setGivenData(updatedFileStruct)
+        setFileStruct(updatedFileStruct)
         emitFileStrucuture(updatedFileStruct)
     }
 
@@ -249,9 +264,10 @@ const FileTree = ({data}) => {
         const newFile = {
             id: currId, 
             name: fileName, 
-            isFolder: false
+            isFolder: false,
+            content: ""
         }
-
+        const currentFileStruct = JSON.parse(JSON.stringify(givenData))
 
         let updatedFileStruct
 
@@ -265,10 +281,12 @@ const FileTree = ({data}) => {
             setGivenData(updatedFileStruct)
         }
 
+        setGivenData(updatedFileStruct);
+        setFileStruct(updatedFileStruct)
         emitFileStrucuture(updatedFileStruct)
 
     }
-
+ 
     return (
         
         <>
@@ -328,6 +346,7 @@ const FileTree = ({data}) => {
                 </div>
                 
             </div>
+
 
                 <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
                 </div>
