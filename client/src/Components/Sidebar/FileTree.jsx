@@ -101,6 +101,7 @@ const FileTree = ({data}) => {
     const emitFileStrucuture = (updatedFileStruct) =>{
         if (socketRef.current){
             socketRef.current.emit('update-file-struct', {RoomID, newFileStruct: updatedFileStruct})
+            console.log(updatedFileStruct)
         }
     }
 
