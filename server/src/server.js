@@ -121,11 +121,16 @@ wsServer.on('connection', (socket) => {
     })
 
     // fileStrucutre handling
-    socket.on('update-file-struct', async({RoomID, newFileStruct}) => {
+    /*socket.on('update-file-struct', async({RoomID, newFileStruct}) => {
         try{
+            // await data.findOneAndUpdate(
+            //     {roomId: RoomID},  //kaha pe update karne ka hai
+            //     {fileStruct: newFileStruct}
+            // )
+
             await data.findOneAndUpdate(
-                {roomId: RoomID},  //kaha pe update karne ka hai
-                {fileStruct: newFileStruct}
+                { roomId: RoomID },
+                { $push: { fileStruct: { $each: newFileStruct } } }
             )
 
 
@@ -135,6 +140,62 @@ wsServer.on('connection', (socket) => {
 
         catch(error) {
             console.log("Error updating the file structure: ", error)
+        }
+    })*/
+
+
+    socket.on('update-file-struct', async({RoomID, newFileStruct}) => {
+        try{
+                const doc = await data.findOne({roomId: RoomID})
+                if (!doc) return 
+
+                const existingStruct = JSON.parse(JSON.stringify(doc.fileStruct))
+
+                const merge = (existingStruct = [], incoming = []) => {
+                    const map = new Map()
+                
+                    for (const node of existingStruct) {
+                        map.set(node.id, { ...node })
+                    }
+                
+                    for (const node of incoming) {
+                        const existingNode = map.get(node.id);
+                
+                        if (!existingNode) {
+                            // New node (folder or file)
+                            map.set(node.id, { ...node })
+                        } else {
+                            if (node.isFolder) {
+                                map.set(node.id, {
+                                    ...existingNode,
+                                    ...node,
+                                    children: merge(existingNode.children || [], node.children || [])
+                                })
+                            } 
+                            
+                            else {
+                                map.set(node.id, {
+                                    ...existingNode,
+                                    ...node,
+                                    content: node.content !== undefined ? node.content : existingNode.content
+                                })
+                            }
+                        }
+                    }
+                    
+                    console.log("Map: ", map)
+                    return Array.from(map.values())
+                }
+                
+                
+                const updatedStruct = merge(existingStruct, newFileStruct)
+                await data.updateOne({ roomId: RoomID }, { fileStruct: updatedStruct })
+                socket.to(RoomID).emit('update-file-struct', updatedStruct)
+                
+        }
+
+        catch(e){ 
+            console.log("Error updating the struct", e)
         }
     })
 
