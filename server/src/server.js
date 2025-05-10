@@ -34,6 +34,8 @@ app.get('/', (req, res) => {
 let clientList = []
 
 const roomUser = {}
+let userList = {}
+
 
 const createDefaultFileStructure = () => {
     const idObj = new ShortUniqueId({length: 6})
@@ -72,6 +74,9 @@ wsServer.on('connection', (socket) => {
     
     socket.on('join', async({RoomID, userName}) => {
 
+        userList[userName] = socket.id
+
+        console.log('User List: ', userList)
         
         roomUser[socket.id] = userName        
         socket.join(RoomID)
@@ -100,7 +105,7 @@ wsServer.on('connection', (socket) => {
             socket.emit('init-file-structure', room.fileStruct)
 
             const clients = getConnectedClients(RoomID)
-            console.log(clients)
+            // console.log(clients)
 
 
             clients.forEach(({socketId}) => {
@@ -151,7 +156,7 @@ wsServer.on('connection', (socket) => {
 
                 const existingStruct = JSON.parse(JSON.stringify(doc.fileStruct))
 
-                const merge = (existingStruct = [], incoming = []) => {
+                const merge = (existingStruct, incoming) => {
                     const map = new Map()
                 
                     for (const node of existingStruct) {
@@ -310,7 +315,7 @@ wsServer.on('connection', (socket) => {
             }
 
             catch (error) {
-                console.log(`Error updating clients for room ${roomID}:`, error)
+                console.log(`Error updating clients for room:`, error)
             }
 
             

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import {v4} from 'uuid'
 import {useNavigate} from 'react-router-dom'
 
@@ -7,7 +7,6 @@ const Form = () => {
 
     const [roomId, setRoomId] = useState('')
     const [userName, setUsername] = useState('')
-
     const createNewRoom = (e)=>{
         e.preventDefault()
         const id = v4()
@@ -29,6 +28,7 @@ const Form = () => {
             }, 
             replace: true
         })
+
     }
 
     return (
@@ -55,7 +55,9 @@ const Form = () => {
                     type='button'
                     className="mt-2 w-full rounded-md bg-primary px-8 py-3 text-lg font-bold text-[#040024] bg-[#4F91EC]"
 
-                    onClick={joinRoom}
+                    onClick={() => {
+                        joinRoom();
+                    }}
 
                 >
                     Join
