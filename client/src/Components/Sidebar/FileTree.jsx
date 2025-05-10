@@ -14,7 +14,7 @@ const FileTree = ({data}) => {
 
     const [isOpen, setIsOpen] = useState({}) // {src: true}
     // const [isSelectedId, setIsSelectedId] = useState(null)
-    const {fileId, setFileId, fileName, setFileName,fileStruct, setFileStruct, roomId} = useContext(CodeDataContext)
+    const {fileId, setFileId, fileName, setFileName,fileStruct, setFileStruct, roomId, userlist, setUserlist} = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
 
     const socketRef = useRef(null)
@@ -85,6 +85,10 @@ const FileTree = ({data}) => {
                 setGivenData(newFileStruct)
                 setFileStruct(newFileStruct)
                 console.log("Second: ", fileStruct)
+            })
+
+            socketRef.current.on('user-list', (userList) =>{
+               setUserlist(userList)
             })
 
 
@@ -363,7 +367,7 @@ const FileTree = ({data}) => {
                     <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
                     {fileName && (
                         
-                        <div className="text-xs font-[Montserrat_SemiBold] text-gray-900 dark:text-[#eeeeee] pt-2 px-17">
+                        <div className="text-xs font-[Montserrat_SemiBold]  text-gray-900 dark:text-[#eeeeee] pt-2 px-17">
                             Currently working on: <span className="underline">{fileName}</span>
                     </div>)}
                 </div>

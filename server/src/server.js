@@ -35,7 +35,7 @@ let clientList = []
 
 const roomUser = {}
 let userList = {}
-
+let roomToUsers = {}
 
 const createDefaultFileStructure = () => {
     const idObj = new ShortUniqueId({length: 6})
@@ -78,7 +78,13 @@ wsServer.on('connection', (socket) => {
 
         console.log('User List: ', userList)
         
-        roomUser[socket.id] = userName        
+        roomUser[socket.id] = userName    
+        if (!roomToUsers[RoomID]) {
+            roomToUsers[RoomID] = [];
+        }
+        if (!roomToUsers[RoomID].includes(userName)) {
+            roomToUsers[RoomID].push(userName);
+        }    
         socket.join(RoomID)
 
         try{
@@ -103,6 +109,10 @@ wsServer.on('connection', (socket) => {
             }
 
             socket.emit('init-file-structure', room.fileStruct)
+            wsServer.to(RoomID).emit('user-list', {
+                RoomID,
+                userList
+            })
 
             const clients = getConnectedClients(RoomID)
             // console.log(clients)
@@ -295,36 +305,43 @@ wsServer.on('connection', (socket) => {
         socket.to(RoomID).emit("cursor-position", {position, userName})
     })
 
-    socket.on('disconnect', ()=>{
+    socket.on('disconnect', () => {
         console.log(`Client Disconnected: ${socket.id}`)
         const index = clientList.indexOf(socket.id)
         if (index > -1) {
             clientList.splice(index, 1)
         }
-
+    
         const userName = roomUser[socket.id]
-
-        Object.keys(wsServer.sockets.adapter.rooms).forEach(roomId => {
-            socket.to(roomId).emit('user-disconnected', {userName})
-
-            try{
-                const clients = getConnectedClients(roomId)
-                clients.forEach(({socketId}) => {
-                    wsServer.to(socketId).emit('clients-updated', {clients})
-                })
-            }
-
-            catch (error) {
-                console.log(`Error updating clients for room:`, error)
-            }
-
-            
-        })
-
-        
+        if (!userName) return;
+        delete userList[userName]
         delete roomUser[socket.id]
-        console.log(clientList)
         
+        Object.keys(roomToUsers).forEach(roomId => {
+            const userIndex = roomToUsers[roomId].indexOf(userName)
+            if (userIndex > -1) {
+                roomToUsers[roomId].splice(userIndex, 1)
+                
+                wsServer.to(roomId).emit('user-list', {
+                    // RoomID: roomId,
+                    userList
+                })
+                
+                socket.to(roomId).emit('user-disconnected', { userName })
+                
+                try {
+                    const clients = getConnectedClients(roomId)
+                    clients.forEach(({socketId}) => {
+                        wsServer.to(socketId).emit('clients-updated', { clients })
+                    })
+                } catch (error) {
+                    console.log(`Error updating clients for room:`, error)
+                }
+            }
+        })
+        
+        console.log('Updated User List:', userList)
+        console.log('Updated Room Users:', roomToUsers)
     })
 
 

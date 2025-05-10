@@ -8,7 +8,8 @@ export const CodeDataProvider = ({children}) => {
     const [fileId, setFileId] = useState('')
     const [fileName, setFileName] = useState('')
     const [fileStruct, setFileStruct] = useState([])
-    const [RoomId, setRoomId] = useState('  ')
+    const [RoomId, setRoomId] = useState('')
+    const [userlist, setUserlist] = useState([])
 
     return(
         <CodeDataContext.Provider value={{
@@ -21,7 +22,9 @@ export const CodeDataProvider = ({children}) => {
             fileStruct,
             setFileStruct,
             RoomId,
-            setRoomId
+            setRoomId,
+            userlist, 
+            setUserlist
         }}>
             {children}
         </CodeDataContext.Provider>
