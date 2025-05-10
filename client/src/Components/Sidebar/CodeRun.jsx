@@ -39,10 +39,10 @@ const CodeRun = () => {
             <div className='flex flex-row justify-between'>
                 <label 
                 htmlFor="input" 
-                className="block mt-20 mb-2  text-[20px] font-[Montserrat_SemiBold] text-gray-900 dark:text-white"
+                className="block mt-12 mb-2  text-[20px] font-[Montserrat_SemiBold] text-gray-900 dark:text-white"
                 >Input</label>
             
-            <div className='mt-20 mb-2'>
+            <div className='mt-12 mb-2'>
             <LangButton />
             </div>
             </div>

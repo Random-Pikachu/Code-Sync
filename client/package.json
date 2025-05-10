@@ -13,6 +13,7 @@
     "@iconify/react": "^5.2.0",
     "@monaco-editor/react": "^4.6.0",
     "@tailwindcss/vite": "^4.0.3",
+    "@vscode/codicons": "^0.0.36",
     "axios": "^1.8.2",
     "dotenv": "^16.4.7",
     "file-icons-js": "github:websemantics/file-icons-js",

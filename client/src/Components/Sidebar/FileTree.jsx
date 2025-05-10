@@ -14,7 +14,7 @@ const FileTree = ({data}) => {
 
     const [isOpen, setIsOpen] = useState({}) // {src: true}
     // const [isSelectedId, setIsSelectedId] = useState(null)
-    const {fileId, setFileId, fileStruct, setFileStruct, roomId} = useContext(CodeDataContext)
+    const {fileId, setFileId, fileName, setFileName,fileStruct, setFileStruct, roomId} = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
 
     const socketRef = useRef(null)
@@ -114,72 +114,75 @@ const FileTree = ({data}) => {
         return(
             <>
             <div> 
-        < div className='text-white'>
-            {/* printing the structure */}
-            {sortedData.map((struct) => (
-                <div  key={struct.id} className=''>
-                    {/* {struct.isFolder && 
-                        (
-                            <span
-                                onClick={() =>{
-                                    setIsOpen((prev) => ({
-                                        ...prev,
-                                        [struct.name] : !prev[struct.name]
-                                    }))
-                                }}
+                < div className='text-white'>
+                    {/* printing the structure */}
+                    {sortedData.map((struct) => (
+                        <div  key={struct.id} className=''>
+                            {/* {struct.isFolder && 
+                                (
+                                    <span
+                                        onClick={() =>{
+                                            setIsOpen((prev) => ({
+                                                ...prev,
+                                                [struct.name] : !prev[struct.name]
+                                            }))
+                                        }}
+                                        
+                                    >{isOpen[struct.name] ? "-": "+"}</span>
+                                )
+                            } */}
+
+
+                            <span onClick={() =>{ 
+                                setFileId(struct.id);
+                                setFileName(struct.name)
                                 
-                            >{isOpen[struct.name] ? "-": "+"}</span>
-                        )
-                    } */}
+                                if (socketRef.current && !struct.ifFolder){
+                                    socketRef.current.emit("file-open", {RoomID, fileId: struct.id})
+                                }
 
-
-                    <span onClick={() =>{ 
-                        setFileId(struct.id);
-                        
-                        if (socketRef.current && !struct.ifFolder){
-                            socketRef.current.emit("file-open", {RoomID, fileId: struct.id})
-                        }
-
-                        console.log(givenData)
-                        setIsOpen((prev) => ({
-                            ...prev,
-                            [struct.name] : !prev[struct.name]
-                        }))
-                    
-                    }                        
-                        }
-                        className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px] file-tree-item'
-                        >{struct.isFolder ? (<svg 
-                            stroke="currentColor" 
-                            fill="currentColor" 
-                            strokeWidth="0" 
-                            viewBox="0 0 1024 1024" 
-                            className="mr-2 min-w-fit inline-block" 
-                            height="24" 
-                            width="24" 
-                            xmlns="http://www.w3.org/2000/svg"><path d="M880 298.4H521L403.7 186.2a8.15 8.15 0 0 0-5.5-2.2H144c-17.7 0-32 14.3-32 32v592c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32zM840 768H184V256h188.5l119.6 114.4H840V768z"></path></svg>) : 
-                            // (<img 
-                            //     src={getIconForFile(struct.name)} 
-                            //     alt="" />
-                            // )
-
-                            (
-                                <span className={`${getClass(struct.name)} px-3`}></span>
-                            )
+                                console.log(givenData)
+                                setIsOpen((prev) => ({
+                                    ...prev,
+                                    [struct.name] : !prev[struct.name]
+                                }))
                             
-                            }{struct.name}</span>
-                    
-                    {/* printing the tree like structure for children */}
-                    {isOpen[struct.name] && struct.isFolder  &&  
-                    (<div className="pl-4">
-                        {printTree(struct.children)}
-                    </div>)
-                }
+                            }                        
+                                }
+                                className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px] file-tree-item'
+                                >{struct.isFolder ? (<svg 
+                                    stroke="currentColor" 
+                                    fill="currentColor" 
+                                    strokeWidth="0" 
+                                    viewBox="0 0 1024 1024" 
+                                    className="mr-2 min-w-fit inline-block" 
+                                    height="24" 
+                                    width="24" 
+                                    xmlns="http://www.w3.org/2000/svg"><path d="M880 298.4H521L403.7 186.2a8.15 8.15 0 0 0-5.5-2.2H144c-17.7 0-32 14.3-32 32v592c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32zM840 768H184V256h188.5l119.6 114.4H840V768z"></path></svg>) : 
+                                    // (<img 
+                                    //     src={getIconForFile(struct.name)} 
+                                    //     alt="" />
+                                    // )
+
+                                    (
+                                        <span className={`${getClass(struct.name)} px-3`}></span>
+                                    )
+                                    
+                                    }{struct.name}</span>
+                            
+                            {/* printing the tree like structure for children */}
+                            {isOpen[struct.name] && struct.isFolder  &&  
+                            (<div className="pl-4">
+                                {printTree(struct.children)}
+                            </div>)
+                        }
+                        </div>
+                    ))}
                 </div>
-            ))}
         </div>
-            </div>
-            {console.log('Selected Id:', fileId, "RoomId: ", RoomID)}
+    {console.log('Selected Id:', fileId, "RoomId: ", RoomID)}
+
+            
             </>
         )
     }
@@ -352,10 +355,18 @@ const FileTree = ({data}) => {
                 <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
                 </div>
             
-            
-
-            <div className='px-17 mt-4' id = 'file-tree'>
-            {printTree(givenData)}
+            <div className="h-full flex flex-col">
+                <div className='px-17 mt-4 flex-grow overflow-auto' id = 'file-tree'>
+                {printTree(givenData)}
+                </div>
+                <div className='fixed bottom-10 left-[71%] flex items-center flex-col justify-center'>
+                    <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
+                    {fileName && (
+                        
+                        <div className="text-xs font-[Montserrat_SemiBold] text-gray-900 dark:text-[#eeeeee] pt-2 px-17">
+                            Currently working on: <span className="underline">{fileName}</span>
+                    </div>)}
+                </div>
             </div>
     </>
   )
