@@ -6,7 +6,7 @@ const connectdb = async () => {
 
     // console.log('U')
     try{
-        await mongoose.connect("mongodb://0.0.0.0:27017/codeSync")
+        await mongoose.connect(`mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.cvlp5es.mongodb.net/codeSync`)
         console.log("Successfully connected to database")
     }
 

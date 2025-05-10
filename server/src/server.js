@@ -5,7 +5,7 @@ import {Server} from 'socket.io'
 import connectdb from './db/connection.js'
 import { data } from './models/scheme.models.js';
 import ShortUniqueId from 'short-unique-id';
-
+import 'dotenv/config'
 
 
 
