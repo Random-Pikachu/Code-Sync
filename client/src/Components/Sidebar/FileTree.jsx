@@ -75,16 +75,16 @@ const FileTree = ({data}) => {
             socketRef.current.emit("join", {RoomID, userName: location.state.userName})
 
             socketRef.current.on('init-file-structure', (fileStruct) =>{
-                console.log("Received Initial File Structure:", fileStruct);
+                // console.log("Received Initial File Structure:", fileStruct);
                 setGivenData(fileStruct)
                 setFileStruct(fileStruct)
             })
 
             socketRef.current.on('update-file-struct', (newFileStruct) =>{
-                console.log("First: ", newFileStruct)
+                // console.log("First: ", newFileStruct)
                 setGivenData(newFileStruct)
                 setFileStruct(newFileStruct)
-                console.log("Second: ", fileStruct)
+                // console.log("Second: ", fileStruct)
             })
 
             socketRef.current.on('user-list', (userList) =>{
@@ -105,7 +105,7 @@ const FileTree = ({data}) => {
     const emitFileStrucuture = (updatedFileStruct) =>{
         if (socketRef.current){
             socketRef.current.emit('update-file-struct', {RoomID, newFileStruct: updatedFileStruct})
-            console.log(updatedFileStruct)
+            // console.log(updatedFileStruct)
         }
     }
 
@@ -145,7 +145,7 @@ const FileTree = ({data}) => {
                                     socketRef.current.emit("file-open", {RoomID, fileId: struct.id})
                                 }
 
-                                console.log(givenData)
+                                // console.log(givenData)
                                 setIsOpen((prev) => ({
                                     ...prev,
                                     [struct.name] : !prev[struct.name]
@@ -184,7 +184,7 @@ const FileTree = ({data}) => {
                     ))}
                 </div>
         </div>
-    {console.log('Selected Id:', fileId, "RoomId: ", RoomID)}
+    {/* {console.log('Selected Id:', fileId, "RoomId: ", RoomID)} */}
 
             
             </>
@@ -232,7 +232,7 @@ const FileTree = ({data}) => {
         if (!folderName) return
         
         const currId = idObj.rnd()
-        console.log(`Id for ${folderName}: ${currId}`)
+        // console.log(`Id for ${folderName}: ${currId}`)
 
         const newFolder = {
             id: currId, 
@@ -267,7 +267,7 @@ const FileTree = ({data}) => {
         if (!fileName) return
         
         const currId = idObj.rnd()
-        console.log(`Id for ${fileName}: ${currId}`)
+        // console.log(`Id for ${fileName}: ${currId}`)
 
         const newFile = {
             id: currId, 

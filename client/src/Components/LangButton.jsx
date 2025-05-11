@@ -17,9 +17,9 @@ const LangButton = () => {
 
 
     
-    const handleClick = () => {
-        console.log(language)
-    }
+    // const handleClick = () => {
+    //     console.log(language)
+    // }
     
     return (
         <>

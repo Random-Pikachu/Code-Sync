@@ -7,6 +7,7 @@ import { inputContext } from '../../Context/CodeInput'
 import { CodeDataContext } from '../Sidebar/CodeData'
 import randomcolor from 'randomcolor'
 import hexRgb from 'hex-rgb'
+import toast, { Toaster } from 'react-hot-toast'
 
 
 const EditorWindow = () => {
@@ -228,9 +229,11 @@ const EditorWindow = () => {
             socketRef.current.on('joined', ({clients, userName, socketId})=>{
                 
                 // checking ki processed username === current username
-                if (userName !== location.state.userName){
-                    console.log(`${userName} joined the room`)
-                }
+                // if (userName !== location.state.userName){
+                    // console.log(`${userName} joined the room`)
+                    // toast(`${userName} joined the room.`)
+                    
+                // }
 
                 // giving color to new user
                 if (!userColorsRef.current[userName]) {
@@ -266,7 +269,7 @@ const EditorWindow = () => {
 
 
             socketRef.current.on('user-disconnected', ({userName}) => {
-                console.log(`${userName} has disconnected`)
+                // console.log(`${userName} has disconnected`)
                 setPeerPosition((prev) => {
                     const newPositions = {...prev}
                     delete newPositions[userName]
@@ -287,7 +290,7 @@ const EditorWindow = () => {
 
             socketRef.current.on('cursor-position', ({position, userName}) =>{
                 if (!socketRef.current) return;
-                console.log("received cursor position for ", userName, ": ", position)
+                // console.log("received cursor position for ", userName, ": ", position)
                 setPeerPosition((prev) => ({
                     ...prev,
                     [userName]: position
@@ -339,12 +342,12 @@ const EditorWindow = () => {
             value={data}
             onChange={(value, event) => {
                 setData(value)
-                console.log('change: ', value);
+                // console.log('change: ', value);
                 socketRef.current.emit('code-change', {
                     RoomID, 
                     value
                 })      
-                console.log("RoomID: ", RoomID, "Type: ", typeof(RoomID))
+                // console.log("RoomID: ", RoomID, "Type: ", typeof(RoomID))
                 socketRef.current.emit('update-file-content', {
                     RoomID,
                     fileId,
@@ -358,7 +361,7 @@ const EditorWindow = () => {
                 fontLigatures: true
             }}
         />
-
+        <Toaster />
         </div>
     </>
   )
