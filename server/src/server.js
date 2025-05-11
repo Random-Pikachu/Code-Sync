@@ -65,6 +65,22 @@ const getConnectedClients = (roomID)=>{
 }
 
 
+const getRoomUserList = (roomID) => {
+    if (!roomToUsers[roomID]) return {};
+    
+    const roomUsernames = roomToUsers[roomID];
+    const roomSpecificUserList = {};
+    
+    roomUsernames.forEach(username => {
+        if (userList[username]) {
+            roomSpecificUserList[username] = userList[username];
+        }
+    });
+    
+    return roomSpecificUserList;
+}
+
+
 
 wsServer.on('connection', (socket) => {
     // console.log(`connected to server: ${socket.id}`)
@@ -76,7 +92,7 @@ wsServer.on('connection', (socket) => {
 
         userList[userName] = socket.id
 
-        console.log('User List: ', userList)
+        // console.log('User List: ', userList)
         
         roomUser[socket.id] = userName    
         if (!roomToUsers[RoomID]) {
@@ -109,9 +125,10 @@ wsServer.on('connection', (socket) => {
             }
 
             socket.emit('init-file-structure', room.fileStruct)
+            const roomUserList = getRoomUserList(RoomID)
             wsServer.to(RoomID).emit('user-list', {
                 RoomID,
-                userList
+                userList: roomUserList
             })
 
             const clients = getConnectedClients(RoomID)
@@ -198,7 +215,7 @@ wsServer.on('connection', (socket) => {
                         }
                     }
                     
-                    console.log("Map: ", map)
+                    // console.log("Map: ", map)
                     return Array.from(map.values())
                 }
                 
@@ -223,7 +240,7 @@ wsServer.on('connection', (socket) => {
             const updateFileContent = (fileStruct, fileId, newContent) => {
                 return fileStruct.map(item => {
                     if (item.id === fileId && !item.isFolder) {
-                        console.log(`Updating File ID: ${fileId}, New Content: ${newContent}`)
+                        // console.log(`Updating File ID: ${fileId}, New Content: ${newContent}`)
                         return {...item, content: newContent}
                     }
     
@@ -256,7 +273,7 @@ wsServer.on('connection', (socket) => {
     
 
     socket.on('file-open', async ({RoomID, fileId}) => {
-        console.log("RoomId: ", RoomID, "File ID: ", fileId)
+        // console.log("RoomId: ", RoomID, "File ID: ", fileId)
         try{
             const room = await data.findOne({roomId: RoomID})
             if (!room) return
@@ -291,12 +308,12 @@ wsServer.on('connection', (socket) => {
 
     // code handling
     socket.on('code-change', ({RoomID, value}) => {
-        console.log(value)
+        // console.log(value)
         socket.to(RoomID).emit('code-change', {value})
     })
     
     socket.on('sync-code', ({RoomID, value}) => {
-        console.log(value)
+        // console.log(value)
         socket.to(RoomID).emit('sync-code', {value})
     })
 
@@ -306,7 +323,7 @@ wsServer.on('connection', (socket) => {
     })
 
     socket.on('disconnect', () => {
-        console.log(`Client Disconnected: ${socket.id}`)
+        // console.log(`Client Disconnected: ${socket.id}`)
         const index = clientList.indexOf(socket.id)
         if (index > -1) {
             clientList.splice(index, 1)
@@ -322,9 +339,9 @@ wsServer.on('connection', (socket) => {
             if (userIndex > -1) {
                 roomToUsers[roomId].splice(userIndex, 1)
                 
+                const roomUserList = getRoomUserList(roomId);
                 wsServer.to(roomId).emit('user-list', {
-                    // RoomID: roomId,
-                    userList
+                    userList: roomUserList
                 })
                 
                 socket.to(roomId).emit('user-disconnected', { userName })
@@ -340,8 +357,8 @@ wsServer.on('connection', (socket) => {
             }
         })
         
-        console.log('Updated User List:', userList)
-        console.log('Updated Room Users:', roomToUsers)
+        // console.log('Updated User List:', userList)
+        // console.log('Updated Room Users:', roomToUsers)
     })
 
 
