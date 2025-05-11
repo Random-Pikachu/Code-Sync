@@ -104,25 +104,41 @@ wsServer.on('connection', (socket) => {
         socket.join(RoomID)
 
         try{
-            let room = await data.findOne({roomId: RoomID})
-            if (!room) {
-                room = new data({
-                    roomId: RoomID,
-                    users: [userName],
-                    fileStruct: createDefaultFileStructure()
-                })
+            // let room = await data.findOne({roomId: RoomID})
+            // if (!room) {
+            //     room = new data({
+            //         roomId: RoomID,
+            //         users: [userName],
+            //         fileStruct: createDefaultFileStructure()
+            //     })
 
-                await room.save()
+            //     await room.save()
                 
-            }
+            // }
 
-            else {
+            // else {
                 
-                if (!room.users.includes(userName)){
-                    room.users.push(userName)
-                    await room.save()
+            //     if (!room.users.includes(userName)){
+            //         room.users.push(userName)
+            //         await room.save()
+            //     }
+            // }
+
+            let room = await data.findOneAndUpdate(
+                { roomId: RoomID },
+                {
+                    $setOnInsert: {
+                        fileStruct: createDefaultFileStructure()
+                    },
+                    $addToSet: {
+                        users: userName
+                    }
+                },
+                {
+                    upsert: true,
+                    new: true
                 }
-            }
+            );
 
             socket.emit('init-file-structure', room.fileStruct)
             const roomUserList = getRoomUserList(RoomID)
@@ -253,7 +269,7 @@ wsServer.on('connection', (socket) => {
             }
     
             const updatedFileStruct = updateFileContent(room.fileStruct, fileId, newContent)
-            console.log("Updated File Structure:", JSON.stringify(updatedFileStruct, null, 2))
+            // console.log("Updated File Structure:", JSON.stringify(updatedFileStruct, null, 2))
     
             // Replace the direct MongoDB update with this approach
             // await data.findOneAndUpdate(

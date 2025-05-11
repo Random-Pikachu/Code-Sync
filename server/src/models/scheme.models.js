@@ -44,7 +44,8 @@ const fileStructure = new mongoose.Schema({
   const userSchema = new mongoose.Schema({
       roomId: {
           type: String,
-          required: true
+          required: true,
+          unique: true
         },
         users: {
             type: [String],

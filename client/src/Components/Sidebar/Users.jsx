@@ -13,7 +13,7 @@ const Users = () => {
     <>
          <Toaster />
 
-          <button onClick={() => console.log(userlist)}>Click me</button>
+          {/* <button onClick={() => console.log(userlist)}>Click me</button> */}
 
         <h1 className='block text-[20px] font-[Montserrat_SemiBold] text-gray-900 dark:text-[#eeeeee] px-17 pt-8'> Connected Clients</h1>
         <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
