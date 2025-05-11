@@ -8,7 +8,7 @@ export const initializeSocket = async ()=>{
         transports: ['websocket']
     }
 
-    return io(`http://localhost:5600`, options)
+    return io(`https://code-sync-rlsh.onrender.com`, options)
     
     }
 
