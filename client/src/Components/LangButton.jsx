@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { LanguageContext } from '../Context/Languages__'
-import { getLanguages } from '../API/languages'
+import { getLanguages } from '../API/Languages'
 import { inputContext } from '../Context/CodeInput'
 
 const LangButton = () => {
