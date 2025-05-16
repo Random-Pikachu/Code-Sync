@@ -43,7 +43,7 @@ Here're some of the project's best features:
 <h3>1. Clone the repository</h3>
 
 ```bash
-git clone https://github.com/Random-Pikachu/Code-Sync.git
+git clone https://github.com/<your-username>/Code-Sync.git
 cd Code-Sync
 ```
 
