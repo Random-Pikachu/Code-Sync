@@ -1,6 +1,13 @@
 @import "tailwindcss";
+@font-face {
+  font-family: 'Inter';
+  src: url('/Fonts/Inter_Variable.ttf') format('truetype');
+}
 
-
+.dot-grid {
+  background-image: radial-gradient(circle, #222 1px, transparent 1px);
+  background-size: 24px 24px;
+}
 .remote-cursor {
   width: 2px;
   background-color: red;
@@ -9,6 +16,10 @@
 
 
 @theme {
+    --color-primary: #256af4;
+    --color-background-light: #f5f6f8;
+    --color-background-dark: #000000;
+    --font-display: "Inter", sans-serif;
     --animate-move: move 3s ease-out infinite;
     @keyframes move {
       0% {
