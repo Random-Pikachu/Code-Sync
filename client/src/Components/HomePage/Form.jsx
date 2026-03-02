@@ -1,77 +1,95 @@
-import React, { useContext, useState } from 'react'
-import {v4} from 'uuid'
-import {useNavigate} from 'react-router-dom'
+import React, { useState } from 'react'
+import { v4 } from 'uuid'
+import { useNavigate } from 'react-router-dom'
 
 const Form = () => {
     const navigate = useNavigate()
 
     const [roomId, setRoomId] = useState('')
     const [userName, setUsername] = useState('')
-    const createNewRoom = (e)=>{
-        e.preventDefault()
-        const id = v4()
-        setRoomId(id)
-        
-        // console.log(id)
-        
-        
-    }
+    const [mode, setMode] = useState('join') // 'join' or 'create'
 
-    const joinRoom = () => {
-        if (!roomId || !userName){
-            return;
+    const handleAction = () => {
+        if (!userName) return;
+
+        let targetRoomId = roomId;
+
+        if (mode === 'create') {
+            targetRoomId = v4();
+            setRoomId(targetRoomId); // Optional, but good if they navigate back
+        } else if (!targetRoomId) {
+            return; // Requires Room ID to join
         }
 
-        navigate(`/text-editor/${roomId}`, {
+        navigate(`/text-editor/${targetRoomId}`, {
             state: {
                 userName
-            }, 
+            },
             replace: true
         })
-
     }
 
     return (
-        <>  
-        <div className="flex flex-col gap-4 w-full ">
-            <form className='flex w-full flex-col gap-4'>
-            <input
-                    type="text"
-                    name="roomId"
-                    onChange={(e) => setRoomId(e.target.value)}
-                    value={roomId}
-                    placeholder="Room Id"
-                    className=" rounded-md border font-[Fira_Code] border-white bg-darkHover px-3 py-3 bg-[#040024] focus:outline-none text-white placeholder-amber-50" 
-                />
-                <input
-                    type="text"
-                    name="username"
-                    placeholder="Username"
-                    value={userName}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full rounded-md border font-[Fira_Code] bg-[#040024] border-white bg-darkHover px-3 py-3 focus:outline-none text-white placeholder-amber-50" 
-                />
+        <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-black/50 backdrop-blur-sm w-full text-left">
+            <div className="mb-8">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{mode === 'join' ? 'Join a session' : 'Create a session'}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Jump straight into a collaborative workspace with your team.</p>
+            </div>
+            <div className="flex gap-6 border-b border-slate-200 dark:border-slate-800 mb-8">
                 <button
-                    type='button'
-                    className="mt-2 w-full rounded-md bg-primary px-8 py-3 text-lg font-bold text-[#040024] bg-[#4F91EC]"
-
-                    onClick={() => {
-                        joinRoom();
-                    }}
-
+                    onClick={() => setMode('join')}
+                    className={`pb-4 text-sm font-medium border-b-2 transition-all ${mode === 'join' ? 'text-slate-900 dark:text-white border-white' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
                 >
-                    Join
-                </button>           
-            </form>   
+                    Join Room
+                </button>
+                <button
+                    onClick={() => setMode('create')}
+                    className={`pb-4 text-sm font-medium border-b-2 transition-all ${mode === 'create' ? 'text-slate-900 dark:text-white border-white' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+                >
+                    Create Room
+                </button>
+            </div>
+
+            <form className={`grid grid-cols-1 ${mode === 'join' ? 'md:grid-cols-2' : ''} gap-6 mb-8`} onSubmit={(e) => { e.preventDefault(); handleAction(); }}>
+                {mode === 'join' && (
+                    <div className="flex flex-col gap-2 relative">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Room ID</label>
+                        <input
+                            type="text"
+                            name="roomId"
+                            onChange={(e) => setRoomId(e.target.value)}
+                            value={roomId}
+                            placeholder="e.g. ALPHA-DELTA-9"
+                            className="w-full h-12 px-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                        />
+                    </div>
+                )}
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Username</label>
+                    <input
+                        type="text"
+                        name="username"
+                        placeholder="Display name"
+                        value={userName}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                handleAction();
+                            }
+                        }}
+                        className="w-full h-12 px-4 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                    />
+                </div>
+            </form>
 
             <button
-                onClick={createNewRoom}
-                className="cursor-pointer select-none underline text-white font-[Fira_Code]"
+                type="button"
+                onClick={handleAction}
+                className="w-full h-12 bg-primary text-white text-sm font-bold rounded-lg hover:opacity-90 transition-opacity"
             >
-                Generate Unique Room Id
+                {mode === 'join' ? 'Join Room' : 'Start Session'}
             </button>
         </div>
-        </>
     )
 }
 
