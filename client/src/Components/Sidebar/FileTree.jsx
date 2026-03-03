@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import ShortUniqueId from 'short-unique-id';
-import { getClass } from 'file-icons-js'
+import { Icon } from '@iconify/react';
+import { FilePlus, FolderPlus, Pencil } from 'lucide-react';
 import { useLocation, useParams } from "react-router-dom"
-import 'file-icons-js/css/style.css'
 
 import { initializeSocket } from '../../Connection/socket';
 import { CodeDataContext } from './CodeData';
@@ -12,40 +12,17 @@ import { CodeDataContext } from './CodeData';
 
 const FileTree = ({ data }) => {
 
-    const [isOpen, setIsOpen] = useState({}) // {src: true}
-    // const [isSelectedId, setIsSelectedId] = useState(null)
+    const [isOpen, setIsOpen] = useState({})
     const { fileId, setFileId, fileName, setFileName, fileStruct, setFileStruct, roomId, userlist, setUserlist } = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
+    const [contextMenu, setContextMenu] = useState(null)
+    const [renamingId, setRenamingId] = useState(null)
+    const [renameValue, setRenameValue] = useState('')
+    const renameInputRef = useRef(null)
 
     const socketRef = useRef(null)
     const location = useLocation()
     const { RoomID } = useParams()
-
-
-
-    // const handleClickOutside = (e) =>{
-    //     // console.log(e); //we displayed the tree elements using span toh agar clicked area span nahi hai iska matlab vo outside file tree hai
-    //     const fileTree = document.getElementById('file-tree')
-
-    //     if (fileTree && fileTree.contains(e.target)){
-
-    //             const isFileItem = e.target.classList;
-    //             var elements = [...isFileItem];
-    //             console.log(elements)
-
-    //      
-    //             if (!elements.includes('file-tree-item')) {
-    //                 setFileId(null);
-    //             }
-
-    //             else {
-    //                 
-    //                 console.log("Clicked on blank space inside file tree");
-    //                 setFileId(null);
-    //             }
-
-    //     }
-    // }
 
     const handleClickOutside = (e) => {
         const fileTree = document.getElementById('file-tree')
@@ -54,6 +31,7 @@ const FileTree = ({ data }) => {
         if (fileTree && !fileTree.contains(e.target) && codeEditor && !codeEditor.contains(e.target)) {
             setFileId(null)
         }
+        if (contextMenu) setContextMenu(null);
     };
 
 
@@ -63,7 +41,7 @@ const FileTree = ({ data }) => {
         return () => {
             document.removeEventListener('click', handleClickOutside);
         };
-    }, []);
+    }, [contextMenu]);
 
 
 
@@ -75,16 +53,13 @@ const FileTree = ({ data }) => {
             socketRef.current.emit("join", { RoomID, userName: location.state?.userName || "Anonymous" })
 
             socketRef.current.on('init-file-structure', (fileStruct) => {
-                // console.log("Received Initial File Structure:", fileStruct);
                 setGivenData(fileStruct)
                 setFileStruct(fileStruct)
             })
 
             socketRef.current.on('update-file-struct', (newFileStruct) => {
-                // console.log("First: ", newFileStruct)
                 setGivenData(newFileStruct)
                 setFileStruct(newFileStruct)
-                // console.log("Second: ", fileStruct)
             })
 
             socketRef.current.on('user-list', (userList) => {
@@ -105,90 +80,232 @@ const FileTree = ({ data }) => {
     const emitFileStrucuture = (updatedFileStruct) => {
         if (socketRef.current) {
             socketRef.current.emit('update-file-struct', { RoomID, newFileStruct: updatedFileStruct })
-            // console.log(updatedFileStruct)
         }
     }
 
-    const printTree = (data) => {
+    const getFileIcon = (name) => {
+        const ext = name.split('.').pop().toLowerCase();
+        const iconMap = {
+            'js': 'vscode-icons:file-type-js-official',
+            'jsx': 'vscode-icons:file-type-reactjs',
+            'ts': 'vscode-icons:file-type-typescript-official',
+            'tsx': 'vscode-icons:file-type-reactts',
+            'css': 'vscode-icons:file-type-css',
+            'scss': 'vscode-icons:file-type-scss',
+            'html': 'vscode-icons:file-type-html',
+            'json': 'vscode-icons:file-type-json',
+            'md': 'vscode-icons:file-type-markdown',
+            'py': 'vscode-icons:file-type-python',
+            'java': 'vscode-icons:file-type-java',
+            'c': 'vscode-icons:file-type-c',
+            'cpp': 'vscode-icons:file-type-cpp',
+            'go': 'vscode-icons:file-type-go',
+            'rs': 'vscode-icons:file-type-rust',
+            'rb': 'vscode-icons:file-type-ruby',
+            'php': 'vscode-icons:file-type-php',
+            'svg': 'vscode-icons:file-type-svg',
+            'png': 'vscode-icons:file-type-image',
+            'jpg': 'vscode-icons:file-type-image',
+            'gif': 'vscode-icons:file-type-image',
+            'env': 'vscode-icons:file-type-dotenv',
+            'gitignore': 'vscode-icons:file-type-git',
+            'yml': 'vscode-icons:file-type-yaml',
+            'yaml': 'vscode-icons:file-type-yaml',
+            'xml': 'vscode-icons:file-type-xml',
+            'sh': 'vscode-icons:file-type-shell',
+            'bash': 'vscode-icons:file-type-shell',
+            'txt': 'vscode-icons:file-type-text',
+            'pdf': 'vscode-icons:file-type-pdf2',
+            'lock': 'vscode-icons:file-type-lock',
+            'toml': 'vscode-icons:file-type-toml',
+            'vue': 'vscode-icons:file-type-vue',
+            'svelte': 'vscode-icons:file-type-svelte',
+            'astro': 'vscode-icons:file-type-astro',
+            'docker': 'vscode-icons:file-type-docker',
+            'sql': 'vscode-icons:file-type-sql',
+        };
+        return iconMap[ext] || 'vscode-icons:default-file';
+    }
 
-        const sortedData = [...data].sort((a, b) => {
-            return b.isFolder - a.isFolder
-        })
+    const getFolderIcon = (name, isExpanded) => {
+        const folderMap = {
+            'src': isExpanded ? 'vscode-icons:folder-type-src-opened' : 'vscode-icons:folder-type-src',
+            'components': isExpanded ? 'vscode-icons:folder-type-component-opened' : 'vscode-icons:folder-type-component',
+            'public': isExpanded ? 'vscode-icons:folder-type-public-opened' : 'vscode-icons:folder-type-public',
+            'assets': isExpanded ? 'vscode-icons:folder-type-asset-opened' : 'vscode-icons:folder-type-asset',
+            'node_modules': isExpanded ? 'vscode-icons:folder-type-node-opened' : 'vscode-icons:folder-type-node',
+            'utils': isExpanded ? 'vscode-icons:folder-type-utils-opened' : 'vscode-icons:folder-type-utils',
+            'config': isExpanded ? 'vscode-icons:folder-type-config-opened' : 'vscode-icons:folder-type-config',
+            'test': isExpanded ? 'vscode-icons:folder-type-test-opened' : 'vscode-icons:folder-type-test',
+            'tests': isExpanded ? 'vscode-icons:folder-type-test-opened' : 'vscode-icons:folder-type-test',
+            'dist': isExpanded ? 'vscode-icons:folder-type-dist-opened' : 'vscode-icons:folder-type-dist',
+            'build': isExpanded ? 'vscode-icons:folder-type-dist-opened' : 'vscode-icons:folder-type-dist',
+            'styles': isExpanded ? 'vscode-icons:folder-type-css-opened' : 'vscode-icons:folder-type-css',
+            'css': isExpanded ? 'vscode-icons:folder-type-css-opened' : 'vscode-icons:folder-type-css',
+            'images': isExpanded ? 'vscode-icons:folder-type-images-opened' : 'vscode-icons:folder-type-images',
+            'api': isExpanded ? 'vscode-icons:folder-type-api-opened' : 'vscode-icons:folder-type-api',
+            'hooks': isExpanded ? 'vscode-icons:folder-type-hook-opened' : 'vscode-icons:folder-type-hook',
+            'lib': isExpanded ? 'vscode-icons:folder-type-library-opened' : 'vscode-icons:folder-type-library',
+            'pages': isExpanded ? 'vscode-icons:folder-type-view-opened' : 'vscode-icons:folder-type-view',
+            'views': isExpanded ? 'vscode-icons:folder-type-view-opened' : 'vscode-icons:folder-type-view',
+        };
+        const lowerName = name.toLowerCase();
+        return folderMap[lowerName] || (isExpanded ? 'vscode-icons:default-folder-opened' : 'vscode-icons:default-folder');
+    }
 
-        return (
-            <>
-                <div>
-                    < div className='text-white'>
-                        {/* printing the structure */}
-                        {sortedData.map((struct) => (
-                            <div key={struct.id} className=''>
-                                {/* {struct.isFolder && 
-                                (
-                                    <span
-                                        onClick={() =>{
-                                            setIsOpen((prev) => ({
-                                                ...prev,
-                                                [struct.name] : !prev[struct.name]
-                                            }))
-                                        }}
-                                        
-                                    >{isOpen[struct.name] ? "-": "+"}</span>
-                                )
-                            } */}
+    const renameItem = (data, itemId, newName) => {
+        return data.map((struct) => {
+            if (struct.id === itemId) {
+                return { ...struct, name: newName };
+            }
+            if (struct.isFolder && struct.children) {
+                return { ...struct, children: renameItem(struct.children, itemId, newName) };
+            }
+            return struct;
+        });
+    }
 
+    const handleRename = (item) => {
+        setRenamingId(item.id);
+        setRenameValue(item.name);
+        // Focus the input after render
+        setTimeout(() => renameInputRef.current?.focus(), 0);
+    }
 
-                                <span onClick={() => {
-                                    setFileId(struct.id);
-                                    setFileName(struct.name)
+    const commitRename = (itemId) => {
+        const trimmed = renameValue.trim();
+        if (!trimmed || trimmed === getItemName(givenData, itemId)) {
+            setRenamingId(null);
+            return;
+        }
+        const updated = renameItem(givenData, itemId, trimmed);
+        setGivenData(updated);
+        setFileStruct(updated);
+        emitFileStrucuture(updated);
+        if (fileId === itemId) setFileName(trimmed);
+        setRenamingId(null);
+    }
 
-                                    if (socketRef.current && !struct.ifFolder) {
-                                        socketRef.current.emit("file-open", { RoomID, fileId: struct.id })
-                                    }
+    const cancelRename = () => {
+        setRenamingId(null);
+        setRenameValue('');
+    }
 
-                                    // console.log(givenData)
-                                    setIsOpen((prev) => ({
-                                        ...prev,
-                                        [struct.name]: !prev[struct.name]
-                                    }))
+    const getItemName = (data, itemId) => {
+        for (const struct of data) {
+            if (struct.id === itemId) return struct.name;
+            if (struct.isFolder && struct.children) {
+                const found = getItemName(struct.children, itemId);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
 
-                                }
-                                }
-                                    className='text-[15px] font-[Montserrat] text-gray-900 dark:text-white cursor-pointer flex items-center hover:bg-[#03a17c6f] hover:rounded-[4px] file-tree-item'
-                                >{struct.isFolder ? (<svg
-                                    stroke="currentColor"
-                                    fill="currentColor"
-                                    strokeWidth="0"
-                                    viewBox="0 0 1024 1024"
-                                    className="mr-2 min-w-fit inline-block"
-                                    height="24"
-                                    width="24"
-                                    xmlns="http://www.w3.org/2000/svg"><path d="M880 298.4H521L403.7 186.2a8.15 8.15 0 0 0-5.5-2.2H144c-17.7 0-32 14.3-32 32v592c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V330.4c0-17.7-14.3-32-32-32zM840 768H184V256h188.5l119.6 114.4H840V768z"></path></svg>) :
-                                    // (<img 
-                                    //     src={getIconForFile(struct.name)} 
-                                    //     alt="" />
-                                    // )
+    const handleContextMenu = (e, struct) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setContextMenu({ x: e.clientX, y: e.clientY, item: struct });
+    }
 
-                                    (
-                                        <span className={`${getClass(struct.name)} px-3`}></span>
-                                    )
+    const createFileInFolder = (folderId) => {
+        const name = prompt("Enter file name:");
+        if (!name) return;
+        const idObj = new ShortUniqueId({ length: 6 });
+        const newFile = { id: idObj.rnd(), name, isFolder: false, content: "" };
+        const updated = addFolder(givenData, folderId, newFile);
+        setGivenData(updated);
+        setFileStruct(updated);
+        emitFileStrucuture(updated);
+    }
 
-                                    }{struct.name}</span>
+    const createFolderInFolder = (folderId) => {
+        const name = prompt("Enter folder name:");
+        if (!name) return;
+        const idObj = new ShortUniqueId({ length: 6 });
+        const newFolder = { id: idObj.rnd(), name, isFolder: true, children: [] };
+        const updated = addFolder(givenData, folderId, newFolder);
+        setGivenData(updated);
+        setFileStruct(updated);
+        emitFileStrucuture(updated);
+    }
 
-                                {/* printing the tree like structure for children */}
-                                {isOpen[struct.name] && struct.isFolder &&
-                                    (<div className="pl-4">
-                                        {printTree(struct.children)}
-                                    </div>)
-                                }
-                            </div>
-                        ))}
+    const printTree = (data, depth = 0) => {
+        const sortedData = [...data].sort((a, b) => b.isFolder - a.isFolder);
+
+        return sortedData.map((struct) => {
+            const isSelected = fileId === struct.id;
+            const isExpanded = isOpen[struct.name];
+
+            return (
+                <div key={struct.id}>
+                    {/* Tree Item Row */}
+                    <div
+                        onClick={() => {
+                            setFileId(struct.id);
+                            setFileName(struct.name);
+
+                            if (socketRef.current && !struct.isFolder) {
+                                socketRef.current.emit("file-open", { RoomID, fileId: struct.id });
+                            }
+
+                            setIsOpen((prev) => ({
+                                ...prev,
+                                [struct.name]: !prev[struct.name]
+                            }));
+                        }}
+                        onContextMenu={(e) => handleContextMenu(e, struct)}
+                        className={`flex items-center h-[22px] cursor-pointer text-[13px] pr-2 file-tree-item
+                            ${isSelected ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5'}
+                        `}
+                        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+                    >
+                        {/* Chevron for folders, spacer for files */}
+                        {struct.isFolder ? (
+                            <span className={`material-symbols-outlined text-[16px] text-slate-500 mr-0.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                            >chevron_right</span>
+                        ) : (
+                            <span className="w-[16px] mr-0.5 shrink-0"></span>
+                        )}
+
+                        {/* Icon */}
+                        {struct.isFolder ? (
+                            <Icon icon={getFolderIcon(struct.name, isExpanded)} className="text-[16px] mr-1.5 shrink-0" />
+                        ) : (
+                            <Icon icon={getFileIcon(struct.name)} className="text-[16px] mr-1.5 shrink-0" />
+                        )}
+
+                        {/* Name or Rename Input */}
+                        {renamingId === struct.id ? (
+                            <input
+                                ref={renameInputRef}
+                                type="text"
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                onBlur={() => commitRename(struct.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); commitRename(struct.id); }
+                                    if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-[#0a0a0a] text-[13px] text-white border border-[#007fd4] outline-none px-1 py-0 rounded-sm w-full min-w-0 font-inherit"
+                                style={{ lineHeight: '20px' }}
+                            />
+                        ) : (
+                            <span className="truncate">{struct.name}</span>
+                        )}
                     </div>
+
+                    {/* Children (indented with border guide) */}
+                    {isExpanded && struct.isFolder && struct.children && (
+                        <div className="relative">
+                            <div className="absolute top-0 bottom-0 border-l border-slate-700/50" style={{ left: `${depth * 16 + 16}px` }}></div>
+                            {printTree(struct.children, depth + 1)}
+                        </div>
+                    )}
                 </div>
-                {/* {console.log('Selected Id:', fileId, "RoomId: ", RoomID)} */}
-
-
-            </>
-        )
+            );
+        });
     }
 
 
@@ -226,13 +343,11 @@ const FileTree = ({ data }) => {
 
     const createFolder = () => {
         const folderName = prompt("Enter the folder name: ")
-        // console.log("Folder Name: ", folderName)
         let parentId = fileId;
         const idObj = new ShortUniqueId({ length: 6 })
         if (!folderName) return
 
         const currId = idObj.rnd()
-        // console.log(`Id for ${folderName}: ${currId}`)
 
         const newFolder = {
             id: currId,
@@ -261,13 +376,11 @@ const FileTree = ({ data }) => {
 
     const createFile = () => {
         const fileName = prompt("Enter the file name: ")
-        // console.log("Folder Name: ", folderName)
         let parentId = fileId;
         const idObj = new ShortUniqueId({ length: 6 })
         if (!fileName) return
 
         const currId = idObj.rnd()
-        // console.log(`Id for ${fileName}: ${currId}`)
 
         const newFile = {
             id: currId,
@@ -296,83 +409,66 @@ const FileTree = ({ data }) => {
     }
 
     return (
+        <div className="flex flex-col h-full relative">
+            {/* Project Header */}
+            <div className="flex items-center gap-1 px-2 py-1.5 hover:bg-white/5 cursor-pointer group">
+                <span className="material-symbols-outlined text-[12px] text-slate-400 rotate-90">chevron_right</span>
+                <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight">Code-Sync-Project</span>
+                <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <FilePlus size={14} className="text-slate-400 hover:text-white cursor-pointer" onClick={createFile} />
+                    <FolderPlus size={14} className="text-slate-400 hover:text-white cursor-pointer" onClick={createFolder} />
+                </div>
+            </div>
 
-        <>
-            <div className='flex flex-col'>
-                <div className='flex flex-row items-center justify-between w-full px-17 pt-10'>
+            {/* File Tree */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar" id='file-tree'>
+                {printTree(givenData)}
+            </div>
 
-                    <h1 className='block text-[20px] font-[Montserrat_SemiBold] text-gray-900 dark:text-[#eeeeee]'>Files</h1>
-                    {/* <button 
-                    type="button" 
-                    onClick={createFolder}
-                    className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
-                    New Folder
-                </button> */}
+            {/* Currently working on */}
+            {fileName && (
+                <div className="px-3 py-1.5 border-t border-border-color">
+                    <span className="text-[10px] text-slate-500">Editing: </span>
+                    <span className="text-[10px] text-slate-300 font-medium">{fileName}</span>
+                </div>
+            )}
 
-
-                    <div className='flex flex-row gap-3'>
-                        {/* <img 
-                        src={newFolderIcon} 
-                        alt="new-folder" 
-                        className='invert w-8'
-                        onClick={createFolder}            
-                    /> */}
-
-                        <svg
-                            stroke="currentColor"
-                            fill="currentColor"
-                            strokeWidth="0"
-                            viewBox="0 0 24 24"
-                            height="23"
-                            width="23"
-                            xmlns="http://www.w3.org/2000/svg"
-                            onClick={createFolder}
-                        >
-                            <path d="M12.4142 5H21C21.5523 5 22 5.44772 22 6V20C22 20.5523 21.5523 21 21 21H3C2.44772 21 2 20.5523 2 20V4C2 3.44772 2.44772 3 3 3H10.4142L12.4142 5ZM4 5V19H20V7H11.5858L9.58579 5H4ZM11 12V9H13V12H16V14H13V17H11V14H8V12H11Z"></path>
-
-                        </svg>
-
-                        <svg
-                            stroke="currentColor"
-                            fill="currentColor"
-                            strokeWidth="0"
-                            viewBox="0 0 24 24"
-                            height="23"
-                            width="23"
-                            xmlns="http://www.w3.org/2000/svg"
-                            onClick={createFile}
-                        >
-                            <path d="M15 4H5V20H19V8H15V4ZM3 2.9918C3 2.44405 3.44749 2 3.9985 2H16L20.9997 7L21 20.9925C21 21.5489 20.5551 22 20.0066 22H3.9934C3.44476 22 3 21.5447 3 21.0082V2.9918ZM11 11V8H13V11H16V13H13V16H11V13H8V11H11Z"></path>
-                        </svg>
-
-                        {/* <img 
-                        src={newFileIcon} 
-                        alt="new-folder" 
-                        className='invert w-7 h-7'
-                        onClick={createFolder}            
-                    /> */}
+            {/* Context Menu */}
+            {contextMenu && (
+                <div
+                    className="fixed z-50 bg-[#1e1e1e] border border-[#333] rounded shadow-xl py-1 min-w-[160px] text-[12px]"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={() => setContextMenu(null)}
+                >
+                    {contextMenu.item.isFolder && (
+                        <>
+                            <div
+                                className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
+                                onClick={() => { createFileInFolder(contextMenu.item.id); setContextMenu(null); }}
+                            >
+                                <FilePlus size={14} />
+                                New File
+                            </div>
+                            <div
+                                className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
+                                onClick={() => { createFolderInFolder(contextMenu.item.id); setContextMenu(null); }}
+                            >
+                                <FolderPlus size={14} />
+                                New Folder
+                            </div>
+                            <div className="border-t border-[#333] my-0.5"></div>
+                        </>
+                    )}
+                    <div
+                        className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
+                        onClick={() => { handleRename(contextMenu.item); setContextMenu(null); }}
+                    >
+                        <Pencil size={14} />
+                        Rename
                     </div>
-
                 </div>
-
-
-                <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
-            </div>
-
-            <div className="h-full flex flex-col">
-                <div className='px-17 mt-4 flex-grow overflow-auto' id='file-tree'>
-                    {printTree(givenData)}
-                </div>
-                <div className='fixed bottom-10 left-[71%] flex items-center flex-col justify-center'>
-                    <div className='w-[80%] h-[3px] bg-amber-50 mx-auto mt-2'></div>
-                    {fileName && (
-
-                        <div className="text-xs font-[Montserrat_SemiBold]  text-gray-900 dark:text-[#eeeeee] pt-2 px-17">
-                            Currently working on: <span className="underline">{fileName}</span>
-                        </div>)}
-                </div>
-            </div>
-        </>
+            )}
+        </div>
     )
 }
 

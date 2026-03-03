@@ -8,6 +8,7 @@ import { CodeDataContext } from '../Sidebar/CodeData'
 import randomcolor from 'randomcolor'
 import hexRgb from 'hex-rgb'
 import toast, { Toaster } from 'react-hot-toast'
+import { X } from 'lucide-react'
 
 
 const EditorWindow = () => {
@@ -55,9 +56,8 @@ const EditorWindow = () => {
                 range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column + 1),
 
                 options: {
-                    className: `cursor-${userName.replace(/\s+/g, "-")}`,
+                    className: `remote-cursor cursor-${userName.replace(/\s+/g, "-")}`,
                     hoverMessage: { value: userName },
-                    // beforeContentClassName: 'cursor-decoration',
                 }
             }
 
@@ -129,16 +129,7 @@ const EditorWindow = () => {
         `
     }
 
-    // .cursor-decoration::before {
-    //     content: '${userName}';
-    //     position: absolute;
-    //     width: ${userName.length}+'px';
-    //     color: white;
-    //     height: 26px;
-    //     top: ${topPosition};
-    //     background-color: ${bgColor};
-    //     z-index: z-index: ${1000 + lineNumber + Math.floor(Math.random() * 11)};
-    // }
+
 
     const hexToRgb = (hex, opacity) => {
         hex = hex.replace(/^#/, "")
@@ -159,7 +150,7 @@ const EditorWindow = () => {
             // console.log("Position of cursor: ", position)
 
             if (socketRef.current) {
-                // sending cursor position data
+
                 socketRef.current.emit('cursor-position', {
                     RoomID,
                     position,
@@ -175,26 +166,68 @@ const EditorWindow = () => {
     useEffect(() => {
         if (!monaco) return;
 
-        monaco.editor.defineTheme("Cobalt2", {
+        monaco.editor.defineTheme("CustomDark", {
             base: 'vs-dark',
             inherit: true,
             rules: [
-                { token: "comment", foreground: "0088ff", fontStyle: "italic" },
-                { token: "constant", foreground: "ff628c" },
-                { token: "entity", foreground: "ffc600" },
-                { token: "invalid", foreground: "f44542" },
-                { token: "keyword", foreground: "ff9d00" },
-                { token: "string", foreground: "a5ff90" },
-                { token: "variable", foreground: "e1efff" },
-                { token: "export default", foreground: "ff9d00", fontStyle: "italic" },
-
+                { token: "comment", foreground: "a1a1a1" },
+                { token: "string", foreground: "58c760" },
+                { token: "keyword", foreground: "f05b8d" },
+                { token: "keyword.operator", foreground: "f05b8d" },
+                { token: "storage", foreground: "f05b8d" },
+                { token: "storage.type", foreground: "f05b8d" },
+                { token: "constant", foreground: "62a6ff" },
+                { token: "entity", foreground: "62a6ff" },
+                { token: "entity.name", foreground: "62a6ff" },
+                { token: "entity.name.function", foreground: "b675f1" },
+                { token: "entity.other.attribute-name", foreground: "b675f1" },
+                { token: "support", foreground: "f05b8d" },
+                { token: "support.type", foreground: "62a6ff" },
+                { token: "support.class.component", foreground: "62a6ff" },
+                { token: "variable", foreground: "ededed" },
+                { token: "variable.parameter", foreground: "ededed" },
+                { token: "variable.other", foreground: "ededed" },
+                { token: "invalid", foreground: "f05b8d" },
+                { token: "tag", foreground: "58c760" },
+                { token: "attribute.name", foreground: "b675f1" },
+                { token: "attribute.value", foreground: "58c760" },
+                { token: "number", foreground: "62a6ff" },
+                { token: "type", foreground: "62a6ff" },
+                { token: "delimiter", foreground: "ededed" },
+                { token: "delimiter.bracket", foreground: "ededed" },
             ],
             colors: {
-                "editor.background": "#193549",
+                "editor.background": "#0a0a0a",
+                "editor.foreground": "#ededed",
+                "editor.lineHighlightBackground": "#ffffff1a",
+                "editor.selectionBackground": "#ffffff1a",
+                "editor.inactiveSelectionBackground": "#ffffff1a",
+                "editorCursor.foreground": "#ededed",
+                "editorLineNumber.foreground": "#878787",
+                "editorLineNumber.activeForeground": "#a1a1a1",
+                "editorIndentGuide.background1": "#242424",
+                "editorIndentGuide.activeBackground1": "#242424",
+                "editorBracketMatch.background": "#ffffff1a",
+                "editorBracketMatch.border": "#00000000",
+                "editorGutter.addedBackground": "#58c760",
+                "editorGutter.deletedBackground": "#f05b8d",
+                "editorGutter.modifiedBackground": "#f99902",
+                "editorOverviewRuler.border": "#000000",
+                "editorWidget.background": "#000000",
+                "editorWidget.border": "#333333",
+                "editorHoverWidget.background": "#000000",
+                "editorWhitespace.foreground": "#878787",
+                "editor.findMatchBackground": "#f9990288",
+                "editor.findMatchHighlightBackground": "#f9990222",
+                "editor.wordHighlightBackground": "#ffffff1a",
+                "scrollbar.shadow": "#00000000",
+                "scrollbarSlider.background": "#333333",
+                "scrollbarSlider.hoverBackground": "#333333",
+                "scrollbarSlider.activeBackground": "#333333",
             }
         })
 
-        monaco.editor.setTheme("Cobalt2")
+        monaco.editor.setTheme("CustomDark")
 
     }, [monaco])
 
@@ -228,14 +261,9 @@ const EditorWindow = () => {
 
             socketRef.current.on('joined', ({ clients, userName, socketId }) => {
 
-                // checking ki processed username === current username
-                // if (userName !== location.state.userName){
-                // console.log(`${userName} joined the room`)
-                // toast(`${userName} joined the room.`)
 
-                // }
 
-                // giving color to new user
+
                 if (!userColorsRef.current[userName]) {
                     userColorsRef.current[userName] = randomcolor({
                         luminosity: 'light',
@@ -269,7 +297,7 @@ const EditorWindow = () => {
 
 
             socketRef.current.on('user-disconnected', ({ userName }) => {
-                // console.log(`${userName} has disconnected`)
+
                 setPeerPosition((prev) => {
                     const newPositions = { ...prev }
                     delete newPositions[userName]
@@ -290,7 +318,7 @@ const EditorWindow = () => {
 
             socketRef.current.on('cursor-position', ({ position, userName }) => {
                 if (!socketRef.current) return;
-                // console.log("received cursor position for ", userName, ": ", position)
+
                 setPeerPosition((prev) => ({
                     ...prev,
                     [userName]: position
@@ -329,41 +357,56 @@ const EditorWindow = () => {
 
 
     return (
-        <>
-
-            <div id='code-editor'>
-                <Editor
-                    // width= "70%" 
-                    height="100vh"
-                    language={languageName === 'c++' ? 'cpp' : languageName}
-                    theme='Cobalt2'
-                    onMount={onMount}
-
-                    value={data}
-                    onChange={(value, event) => {
-                        setData(value)
-                        // console.log('change: ', value);
-                        socketRef.current.emit('code-change', {
-                            RoomID,
-                            value
-                        })
-                        // console.log("RoomID: ", RoomID, "Type: ", typeof(RoomID))
-                        socketRef.current.emit('update-file-content', {
-                            RoomID,
-                            fileId,
-                            newContent: value
-                        })
-                    }}
-
-                    options={{
-                        fontFamily: "'Cascadia Code', JetBrains Mono, Fira Code",
-                        fontSize: 18,
-                        fontLigatures: true
-                    }}
-                />
-                <Toaster />
+        <main className="flex-1 flex flex-col min-w-0 bg-editor-bg overflow-hidden">
+            {/* Tab Bar */}
+            <div className="h-9 flex items-center bg-background-dark border-b border-border-color overflow-x-auto select-none custom-scrollbar shrink-0">
+                <div className="flex items-center h-full bg-editor-bg border-t-2 px-4 gap-2 border-r border-border-color min-w-[120px] border-white">
+                    <span className="material-symbols-outlined text-[14px] text-yellow-400">javascript</span>
+                    <span className="text-xs text-slate-200">main.js</span>
+                    <X size={14} className="text-slate-500 hover:text-slate-300 ml-auto cursor-pointer" />
+                </div>
+                <div className="flex-1"></div>
             </div>
-        </>
+
+            {/* Editor Content */}
+            <div className="flex-1 flex overflow-hidden w-full relative">
+                <div id='code-editor' className="flex-1 overflow-hidden h-full w-full">
+                    <Editor
+                        height="100%"
+                        language={languageName === 'c++' ? 'cpp' : languageName}
+                        theme='CustomDark'
+                        onMount={onMount}
+
+                        value={data}
+                        onChange={(value) => {
+                            setData(value)
+                            socketRef.current.emit('code-change', {
+                                RoomID,
+                                value
+                            })
+                            socketRef.current.emit('update-file-content', {
+                                RoomID,
+                                fileId,
+                                newContent: value
+                            })
+                        }}
+
+                        options={{
+                            fontFamily: "'Dank Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code'",
+                            fontSize: 16,
+                            fontLigatures: true,
+                            minimap: { enabled: false },
+                            scrollbar: {
+                                vertical: 'hidden',
+                                horizontal: 'hidden'
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+
+            <Toaster />
+        </main>
     )
 }
 
