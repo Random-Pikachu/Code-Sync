@@ -1,13 +1,38 @@
 @import "tailwindcss";
+
 @font-face {
   font-family: 'Inter';
   src: url('/Fonts/Inter_Variable.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Dank Mono';
+  src: url('/Fonts/DankMonoNerdFont.otf') format('opentype');
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #333333;
 }
 
 .dot-grid {
   background-image: radial-gradient(circle, #222 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
 .remote-cursor {
   width: 2px;
   background-color: red;
@@ -16,20 +41,28 @@
 
 
 @theme {
-    --color-primary: #256af4;
-    --color-background-light: #f5f6f8;
-    --color-background-dark: #000000;
-    --font-display: "Inter", sans-serif;
-    --animate-move: move 3s ease-out infinite;
-    @keyframes move {
-      0% {
-        transform: translateY(0)
-      }
-      50%{
-        transform: translateY(-30px)
-      }
-      100% {
-        transform: translateY(0);
-      }
+  --color-primary: #ededed;
+  --color-background-light: #f5f6f8;
+  --color-background-dark: #000000;
+  --color-editor-bg: #0a0a0a;
+  --color-sidebar-bg: #000000;
+  --color-border-color: #242424;
+
+  --font-display: "Inter", sans-serif;
+  --font-mono: "Dank Mono", "Fira Code", monospace;
+  --animate-move: move 3s ease-out infinite;
+
+  @keyframes move {
+    0% {
+      transform: translateY(0)
     }
+
+    50% {
+      transform: translateY(-30px)
+    }
+
+    100% {
+      transform: translateY(0);
+    }
+  }
 }
