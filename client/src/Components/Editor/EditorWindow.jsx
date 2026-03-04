@@ -25,9 +25,18 @@ const EditorWindow = () => {
     const [peerPosition, setPeerPosition] = useState({})
     const [cursorDecorations, setCursorDecorations] = useState({})
     const userColorsRef = useRef({})
+    const isRemoteChange = useRef(false)
+    const saveTimerRef = useRef(null)
+    const cursorTimerRef = useRef(null)
+    const fileIdRef = useRef(null)
 
 
     const { data, setData, fileId, fileStruct, RoomId, setRoomId } = useContext(CodeDataContext)
+
+    // Keep fileId ref in sync so closures always have the latest value
+    useEffect(() => {
+        fileIdRef.current = fileId
+    }, [fileId])
 
 
 
@@ -144,20 +153,20 @@ const EditorWindow = () => {
         editorRef.current = editor
 
 
+        // Debounce cursor position emissions to avoid flooding the server
         editor.onDidChangeCursorPosition((event) => {
-            // console.log(event);
             const position = event.position;
-            // console.log("Position of cursor: ", position)
 
-            if (socketRef.current) {
-
-                socketRef.current.emit('cursor-position', {
-                    RoomID,
-                    position,
-                    userName: location.state?.userName || "Anonymous"
-                })
-            }
-
+            if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current)
+            cursorTimerRef.current = setTimeout(() => {
+                if (socketRef.current) {
+                    socketRef.current.emit('cursor-position', {
+                        RoomID,
+                        position,
+                        userName: location.state?.userName || "Anonymous"
+                    })
+                }
+            }, 50)
         })
 
         editor.focus();
@@ -278,21 +287,23 @@ const EditorWindow = () => {
 
             socketRef.current.on('code-change', ({ value }) => {
                 if (editorRef.current) {
-                    const editor = editorRef.current;
-                    const currentPosition = editor.getPosition();
-
-                    setData(value)
-
-                    setTimeout(() => {
-                        if (currentPosition) {
-                            editor.setPosition(currentPosition);
-                        }
-                    }, 0);
+                    const editor = editorRef.current
+                    const position = editor.getPosition()
+                    isRemoteChange.current = true
+                    editor.getModel().setValue(value)
+                    isRemoteChange.current = false
+                    if (position) editor.setPosition(position)
                 }
             })
 
             socketRef.current.on('file-open', ({ file }) => {
-                setData(file.content)
+                if (editorRef.current) {
+                    isRemoteChange.current = true
+                    editorRef.current.getModel().setValue(file.content || '')
+                    isRemoteChange.current = false
+                } else {
+                    setData(file.content)
+                }
             })
 
 
@@ -332,12 +343,15 @@ const EditorWindow = () => {
 
         return () => {
             if (socketRef.current) {
-                socketRef.current.disconnect()
                 socketRef.current.off('joined')
                 socketRef.current.off('code-change')
                 socketRef.current.off('user-disconnected')
                 socketRef.current.off('cursor-position')
+                socketRef.current.off('file-open')
             }
+
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+            if (cursorTimerRef.current) clearTimeout(cursorTimerRef.current)
 
             Object.keys(userColorsRef.current).forEach(userName => {
                 const styleId = `cursor-${userName.replace(/\s+/g, '-')}`
@@ -377,18 +391,27 @@ const EditorWindow = () => {
                         theme='CustomDark'
                         onMount={onMount}
 
-                        value={data}
+                        defaultValue={data}
                         onChange={(value) => {
-                            setData(value)
+                            if (isRemoteChange.current) return
+
+                            // Live sync to other users — fires immediately
                             socketRef.current.emit('code-change', {
                                 RoomID,
                                 value
                             })
-                            socketRef.current.emit('update-file-content', {
-                                RoomID,
-                                fileId,
-                                newContent: value
-                            })
+
+                            // Debounced DB save — fires 1s after user stops typing
+                            if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+                            saveTimerRef.current = setTimeout(() => {
+                                if (socketRef.current) {
+                                    socketRef.current.emit('update-file-content', {
+                                        RoomID,
+                                        fileId: fileIdRef.current,
+                                        newContent: value
+                                    })
+                                }
+                            }, 1000)
                         }}
 
                         options={{
