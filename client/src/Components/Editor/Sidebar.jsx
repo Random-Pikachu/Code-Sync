@@ -1,29 +1,22 @@
 import React, { useState } from 'react'
-import { Play, Users as UsersIcon, Settings, FileText } from 'lucide-react'
+import { Play, Users as UsersIcon, Settings, FileText, Terminal } from 'lucide-react'
 import { Resizable } from 'react-resizable'
 import 'react-resizable/css/styles.css'
 
-import CodeRun from '../Sidebar/CodeRun'
 import Users from '../Sidebar/Users'
 import FileManager from '../Sidebar/FileManager'
 
-const Sidebar = () => {
+const Sidebar = ({ onToggleTerminal }) => {
 
   const [activeComponent, setActiveComponent] = useState('1')
   const [paneWidth, setPaneWidth] = useState(224)
 
-  const renderComponenet = () => {
+  const renderComponent = () => {
     switch (activeComponent) {
       case '1':
         return <FileManager />
-
-      case '2':
-        return <CodeRun />
-
       case '3':
         return <Users />
-
-
       default:
         return <FileManager />
     }
@@ -35,7 +28,6 @@ const Sidebar = () => {
 
   return (
     <div className="flex shrink-0 h-full">
-      {/* Activity Bar (Far Left) */}
       <aside className="w-12 flex flex-col items-center py-3 gap-2 bg-background-dark border-r border-border-color shrink-0">
         <div
           onClick={() => setActiveComponent('1')}
@@ -44,10 +36,11 @@ const Sidebar = () => {
           <FileText size={20} strokeWidth={1.5} />
         </div>
         <div
-          onClick={() => setActiveComponent('2')}
-          className={`p-2.5 rounded-md cursor-pointer transition-colors ${activeComponent === '2' ? 'text-white' : 'text-slate-600 hover:text-slate-300'}`}
+          onClick={() => onToggleTerminal?.()}
+          className="p-2.5 rounded-md cursor-pointer transition-colors text-slate-600 hover:text-slate-300"
+          title="Toggle Terminal"
         >
-          <Play size={20} strokeWidth={1.5} />
+          <Terminal size={20} strokeWidth={1.5} />
         </div>
         <div
           onClick={() => setActiveComponent('3')}
@@ -63,7 +56,6 @@ const Sidebar = () => {
         </div>
       </aside>
 
-      {/* Resizable Sidebar Explorer Pane */}
       <Resizable
         width={paneWidth}
         height={0}
@@ -84,13 +76,13 @@ const Sidebar = () => {
         >
           <div className="px-4 pt-3 pb-2 flex items-center justify-between">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
-              {activeComponent === '1' ? 'Explorer' : activeComponent === '2' ? 'Run Code' : 'Users'}
+              {activeComponent === '1' ? 'Explorer' : 'Users'}
             </span>
             <span className="material-symbols-outlined text-sm text-slate-500 hover:text-slate-300 cursor-pointer">more_horiz</span>
           </div>
 
           <div className="flex flex-col flex-1 overflow-y-auto">
-            {renderComponenet()}
+            {renderComponent()}
           </div>
         </aside>
       </Resizable>
