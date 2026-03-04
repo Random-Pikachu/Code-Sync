@@ -21,31 +21,6 @@ const WelcomeScreen = () => {
                     </p>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="w-full flex flex-col gap-2">
-                    <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest mb-1">
-                        Quick Actions
-                    </span>
-
-                    <WelcomeAction
-                        icon={<FolderOpen size={16} strokeWidth={1.5} />}
-                        label="Open File Explorer"
-                        shortcut="Ctrl+Shift+E"
-                        color="text-yellow-400"
-                    />
-                    <WelcomeAction
-                        icon={<Terminal size={16} strokeWidth={1.5} />}
-                        label="Run Code"
-                        shortcut="Ctrl+Shift+R"
-                        color="text-green-400"
-                    />
-                    <WelcomeAction
-                        icon={<Users size={16} strokeWidth={1.5} />}
-                        label="View Connected Users"
-                        shortcut="Ctrl+Shift+U"
-                        color="text-blue-400"
-                    />
-                </div>
 
                 {/* Helpful Tips */}
                 <div className="w-full border-t border-[#1a1a1a] pt-5">

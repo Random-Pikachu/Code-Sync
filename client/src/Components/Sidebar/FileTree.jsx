@@ -424,13 +424,6 @@ const FileTree = ({ data }) => {
                 {printTree(givenData)}
             </div>
 
-            {/* Currently working on */}
-            {fileName && (
-                <div className="px-3 py-1.5 border-t border-border-color">
-                    <span className="text-[10px] text-slate-500">Editing: </span>
-                    <span className="text-[10px] text-slate-300 font-medium">{fileName}</span>
-                </div>
-            )}
 
             {/* Context Menu */}
             {contextMenu && (
