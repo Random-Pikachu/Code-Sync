@@ -47,10 +47,7 @@ const FileTree = ({ data }) => {
 
     useEffect(() => {
         const setupSocket = async () => {
-            if (socketRef.current) socketRef.current.disconnect()
             socketRef.current = await initializeSocket()
-
-            socketRef.current.emit("join", { RoomID, userName: location.state?.userName || "Anonymous" })
 
             socketRef.current.on('init-file-structure', (fileStruct) => {
                 setGivenData(fileStruct)
@@ -66,15 +63,19 @@ const FileTree = ({ data }) => {
                 setUserlist(userList)
             })
 
-
-            return () => {
-                socketRef.current.off('init-file-structure')
-                socketRef.current.off('update-file-struct')
-            }
+            socketRef.current.emit("join", { RoomID, userName: location.state?.userName || "Anonymous" })
         }
 
 
         setupSocket()
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.off('init-file-structure')
+                socketRef.current.off('update-file-struct')
+                socketRef.current.off('user-list')
+            }
+        }
     }, [])
 
     const emitFileStrucuture = (updatedFileStruct) => {
