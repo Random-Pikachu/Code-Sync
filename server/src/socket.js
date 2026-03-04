@@ -8,6 +8,9 @@ export const setupSockets = (wsServer) => {
     let userList = {}
     let roomToUsers = {}
 
+    // In-memory buffer for pending file content saves — prevents DB race conditions
+    const pendingSaves = new Map()
+
     const createDefaultFileStructure = () => {
         const idObj = new ShortUniqueId({ length: 6 })
         const currId = idObj.rnd()
@@ -17,12 +20,13 @@ export const setupSockets = (wsServer) => {
             isFolder: false,
             content: ""
         }]
-
-        // return []
     }
 
     const getConnectedClients = (roomID) => {
-        let arr = Array.from(wsServer.sockets.adapter.rooms.get(roomID))
+        const room = wsServer.sockets.adapter.rooms.get(roomID)
+        if (!room) return []
+
+        let arr = Array.from(room)
 
         let mappedUsers = arr.map((socketId) => {
             return {
@@ -49,19 +53,50 @@ export const setupSockets = (wsServer) => {
         return roomSpecificUserList;
     }
 
+    // Debounced save for file content — batches rapid writes into a single DB operation
+    const scheduleContentSave = (RoomID, fileId, newContent) => {
+        const key = `${RoomID}:${fileId}`
+        const existing = pendingSaves.get(key)
+        if (existing) clearTimeout(existing.timer)
+
+        const timer = setTimeout(async () => {
+            pendingSaves.delete(key)
+            try {
+                const room = await data.findOne({ roomId: RoomID })
+                if (!room) return
+
+                const updateFileContent = (fileStruct, fileId, newContent) => {
+                    return fileStruct.map(item => {
+                        if (item.id === fileId && !item.isFolder) {
+                            return { ...item, content: newContent }
+                        }
+                        if (item.isFolder && item.children) {
+                            return { ...item, children: updateFileContent(item.children, fileId, newContent) }
+                        }
+                        return item
+                    })
+                }
+
+                const updatedFileStruct = updateFileContent(room.fileStruct, fileId, newContent)
+                await data.updateOne(
+                    { roomId: RoomID },
+                    { $set: { fileStruct: updatedFileStruct } }
+                )
+            } catch (error) {
+                console.log("Error in debounced content save: ", error)
+            }
+        }, 500)
+
+        pendingSaves.set(key, { timer, content: newContent })
+    }
+
     wsServer.on('connection', (socket) => {
-        // console.log(`connected to server: ${socket.id}`)
         clientList.push(socket.id);
 
-
-
         socket.on('join', async ({ RoomID, userName }) => {
-
             userList[userName] = socket.id
-
-            // console.log('User List: ', userList)
-
             roomUser[socket.id] = userName
+
             if (!roomToUsers[RoomID]) {
                 roomToUsers[RoomID] = [];
             }
@@ -71,26 +106,6 @@ export const setupSockets = (wsServer) => {
             socket.join(RoomID)
 
             try {
-                // let room = await data.findOne({roomId: RoomID})
-                // if (!room) {
-                //     room = new data({
-                //         roomId: RoomID,
-                //         users: [userName],
-                //         fileStruct: createDefaultFileStructure()
-                //     })
-
-                //     await room.save()
-
-                // }
-
-                // else {
-
-                //     if (!room.users.includes(userName)){
-                //         room.users.push(userName)
-                //         await room.save()
-                //     }
-                // }
-
                 let room = await data.findOneAndUpdate(
                     { roomId: RoomID },
                     {
@@ -115,8 +130,6 @@ export const setupSockets = (wsServer) => {
                 })
 
                 const clients = getConnectedClients(RoomID)
-                // console.log(clients)
-
 
                 clients.forEach(({ socketId }) => {
                     wsServer.to(socketId).emit('joined', {
@@ -126,89 +139,21 @@ export const setupSockets = (wsServer) => {
                     })
                 })
             }
-
             catch (error) {
                 console.log("Error joining room: ", error)
             }
-
-
-
         })
-
-        // fileStrucutre handling
-        /*socket.on('update-file-struct', async({RoomID, newFileStruct}) => {
-            try{
-                // await data.findOneAndUpdate(
-                //     {roomId: RoomID},  //kaha pe update karne ka hai
-                //     {fileStruct: newFileStruct}
-                // )
-    
-                await data.findOneAndUpdate(
-                    { roomId: RoomID },
-                    { $push: { fileStruct: { $each: newFileStruct } } }
-                )
-    
-    
-                console.log("RoomId: ", RoomID, "\nNew file  Structure: \n",newFileStruct)
-                socket.to(RoomID).emit('update-file-struct', newFileStruct)
-            }
-    
-            catch(error) {
-                console.log("Error updating the file structure: ", error)
-            }
-        })*/
 
 
         socket.on('update-file-struct', async ({ RoomID, newFileStruct }) => {
             try {
-                const doc = await data.findOne({ roomId: RoomID })
-                if (!doc) return
-
-                const existingStruct = JSON.parse(JSON.stringify(doc.fileStruct))
-
-                const merge = (existingStruct, incoming) => {
-                    const map = new Map()
-
-                    for (const node of existingStruct) {
-                        map.set(node.id, { ...node })
-                    }
-
-                    for (const node of incoming) {
-                        const existingNode = map.get(node.id);
-
-                        if (!existingNode) {
-                            // New node (folder or file)
-                            map.set(node.id, { ...node })
-                        } else {
-                            if (node.isFolder) {
-                                map.set(node.id, {
-                                    ...existingNode,
-                                    ...node,
-                                    children: merge(existingNode.children || [], node.children || [])
-                                })
-                            }
-
-                            else {
-                                map.set(node.id, {
-                                    ...existingNode,
-                                    ...node,
-                                    content: node.content !== undefined ? node.content : existingNode.content
-                                })
-                            }
-                        }
-                    }
-
-                    // console.log("Map: ", map)
-                    return Array.from(map.values())
-                }
-
-
-                const updatedStruct = merge(existingStruct, newFileStruct)
-                await data.updateOne({ roomId: RoomID }, { fileStruct: updatedStruct })
-                socket.to(RoomID).emit('update-file-struct', updatedStruct)
-
+                // Use atomic $set to avoid read-modify-write race
+                await data.updateOne(
+                    { roomId: RoomID },
+                    { $set: { fileStruct: newFileStruct } }
+                )
+                socket.to(RoomID).emit('update-file-struct', newFileStruct)
             }
-
             catch (e) {
                 console.log("Error updating the struct", e)
             }
@@ -216,51 +161,18 @@ export const setupSockets = (wsServer) => {
 
 
         socket.on('update-file-content', async ({ RoomID, fileId, newContent }) => {
-            try {
-                let room = await data.findOne({ roomId: RoomID })
-                if (!room) return
+            // Debounced DB save — prevents race conditions from rapid concurrent writes
+            scheduleContentSave(RoomID, fileId, newContent)
 
-                const updateFileContent = (fileStruct, fileId, newContent) => {
-                    return fileStruct.map(item => {
-                        if (item.id === fileId && !item.isFolder) {
-                            // console.log(`Updating File ID: ${fileId}, New Content: ${newContent}`)
-                            return { ...item, content: newContent }
-                        }
-
-                        if (item.isFolder && item.children) {
-                            return { ...item, children: updateFileContent(item.children, fileId, newContent) }
-                        }
-
-                        return item
-                    })
-                }
-
-                const updatedFileStruct = updateFileContent(room.fileStruct, fileId, newContent)
-                // console.log("Updated File Structure:", JSON.stringify(updatedFileStruct, null, 2))
-
-                // Replace the direct MongoDB update with this approach
-                // await data.findOneAndUpdate(
-                //     { roomId: RoomID },
-                //     { $set: { fileStruct: updatedFileStruct } },
-                //     { new: true }
-                // )
-                room.fileStruct = updatedFileStruct;
-                await room.save()
-
-                socket.to(RoomID).emit('file-content-updated', { fileId, newContent });
-            }
-            catch (error) {
-                console.log("Error updating file content in db: ", error)
-            }
+            // Still broadcast immediately to other users for live sync
+            socket.to(RoomID).emit('file-content-updated', { fileId, newContent });
         })
 
 
         socket.on('file-open', async ({ RoomID, fileId }) => {
-            // console.log("RoomId: ", RoomID, "File ID: ", fileId)
             try {
                 const room = await data.findOne({ roomId: RoomID })
                 if (!room) return
-
 
                 const fileById = (fileStruct, fileId) => {
                     for (const file of fileStruct) {
@@ -277,26 +189,18 @@ export const setupSockets = (wsServer) => {
                 let fileData = fileById(room.fileStruct, fileId)
                 socket.to(RoomID).emit("file-open", { file: fileData })
             }
-
             catch (err) {
                 console.log("Error while opening the file: ", err)
             }
-
-
-
         })
 
 
-
-
-        // code handling
+        // Live code sync — no DB write, just broadcast
         socket.on('code-change', ({ RoomID, value }) => {
-            // console.log(value)
             socket.to(RoomID).emit('code-change', { value })
         })
 
         socket.on('sync-code', ({ RoomID, value }) => {
-            // console.log(value)
             socket.to(RoomID).emit('sync-code', { value })
         })
 
@@ -306,7 +210,6 @@ export const setupSockets = (wsServer) => {
         })
 
         socket.on('disconnect', () => {
-            // console.log(`Client Disconnected: ${socket.id}`)
             const index = clientList.indexOf(socket.id)
             if (index > -1) {
                 clientList.splice(index, 1)
@@ -339,9 +242,6 @@ export const setupSockets = (wsServer) => {
                     }
                 }
             })
-
-            // console.log('Updated User List:', userList)
-            // console.log('Updated Room Users:', roomToUsers)
         })
     })
 }
