@@ -11,6 +11,10 @@ export const setupSockets = (wsServer) => {
     // In-memory buffer for pending file content saves — prevents DB race conditions
     const pendingSaves = new Map()
 
+    // In-memory file content cache — always has the latest content for open files
+    // Key: `${RoomID}:${fileId}`, Value: string content
+    const fileContentCache = new Map()
+
     const createDefaultFileStructure = () => {
         const idObj = new ShortUniqueId({ length: 6 })
         const currId = idObj.rnd()
@@ -53,11 +57,27 @@ export const setupSockets = (wsServer) => {
         return roomSpecificUserList;
     }
 
+    // Helper to find a file by ID in the file structure tree
+    const findFileById = (fileStruct, fileId) => {
+        for (const file of fileStruct) {
+            if (file.id === fileId && !file.isFolder) return file
+
+            if (file.isFolder && file.children) {
+                const found = findFileById(file.children, fileId)
+                if (found) return found
+            }
+        }
+        return null
+    }
+
     // Debounced save for file content — batches rapid writes into a single DB operation
     const scheduleContentSave = (RoomID, fileId, newContent) => {
         const key = `${RoomID}:${fileId}`
         const existing = pendingSaves.get(key)
         if (existing) clearTimeout(existing.timer)
+
+        // Always update the in-memory cache immediately
+        fileContentCache.set(key, newContent)
 
         const timer = setTimeout(async () => {
             pendingSaves.delete(key)
@@ -164,30 +184,37 @@ export const setupSockets = (wsServer) => {
             // Debounced DB save — prevents race conditions from rapid concurrent writes
             scheduleContentSave(RoomID, fileId, newContent)
 
-            // Still broadcast immediately to other users for live sync
+            // Broadcast to other users who may have this file open — scoped by fileId
             socket.to(RoomID).emit('file-content-updated', { fileId, newContent });
         })
 
 
+        // When a user opens a file, send them the latest content (from cache or DB)
         socket.on('file-open', async ({ RoomID, fileId }) => {
             try {
+                const cacheKey = `${RoomID}:${fileId}`
+
+                // Check in-memory cache first (has the latest unsaved edits)
+                if (fileContentCache.has(cacheKey)) {
+                    const cachedContent = fileContentCache.get(cacheKey)
+                    socket.emit('file-opened', {
+                        fileId,
+                        content: cachedContent
+                    })
+                    return
+                }
+
+                // Fall back to DB
                 const room = await data.findOne({ roomId: RoomID })
                 if (!room) return
 
-                const fileById = (fileStruct, fileId) => {
-                    for (const file of fileStruct) {
-                        if (file.id === fileId && !file.isFolder) return file
-
-                        if (file.isFolder && file.children) {
-                            const found = fileById(file.children, fileId)
-                            if (found) return found
-                        }
-                    }
-
-                    return null
+                const fileData = findFileById(room.fileStruct, fileId)
+                if (fileData) {
+                    socket.emit('file-opened', {
+                        fileId,
+                        content: fileData.content || ''
+                    })
                 }
-                let fileData = fileById(room.fileStruct, fileId)
-                socket.to(RoomID).emit("file-open", { file: fileData })
             }
             catch (err) {
                 console.log("Error while opening the file: ", err)
@@ -195,9 +222,14 @@ export const setupSockets = (wsServer) => {
         })
 
 
-        // Live code sync — no DB write, just broadcast
-        socket.on('code-change', ({ RoomID, value }) => {
-            socket.to(RoomID).emit('code-change', { value })
+        // File-scoped live code sync — includes fileId so only relevant editors update
+        socket.on('code-change', ({ RoomID, fileId, value }) => {
+            // Update in-memory cache
+            const cacheKey = `${RoomID}:${fileId}`
+            fileContentCache.set(cacheKey, value)
+
+            // Broadcast to others — scoped by fileId
+            socket.to(RoomID).emit('code-change', { fileId, value })
         })
 
         socket.on('sync-code', ({ RoomID, value }) => {
@@ -205,8 +237,8 @@ export const setupSockets = (wsServer) => {
         })
 
 
-        socket.on('cursor-position', ({ RoomID, position, userName }) => {
-            socket.to(RoomID).emit("cursor-position", { position, userName })
+        socket.on('cursor-position', ({ RoomID, position, userName, fileId }) => {
+            socket.to(RoomID).emit("cursor-position", { position, userName, fileId })
         })
 
         socket.on('disconnect', () => {

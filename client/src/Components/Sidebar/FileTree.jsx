@@ -243,11 +243,9 @@ const FileTree = ({ data }) => {
                     {/* Tree Item Row */}
                     <div
                         onClick={() => {
-                            setFileId(struct.id);
-                            setFileName(struct.name);
-
-                            if (socketRef.current && !struct.isFolder) {
-                                socketRef.current.emit("file-open", { RoomID, fileId: struct.id });
+                            if (!struct.isFolder) {
+                                setFileId(struct.id);
+                                setFileName(struct.name);
                             }
 
                             setIsOpen((prev) => ({
