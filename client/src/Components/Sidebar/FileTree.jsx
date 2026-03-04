@@ -8,17 +8,21 @@ import { initializeSocket } from '../../Connection/socket';
 import { CodeDataContext } from './CodeData';
 
 
-
-
 const FileTree = ({ data }) => {
 
     const [isOpen, setIsOpen] = useState({})
+    const [projectOpen, setProjectOpen] = useState(true)
     const { fileId, setFileId, fileName, setFileName, fileStruct, setFileStruct, roomId, userlist, setUserlist } = useContext(CodeDataContext)
     const [givenData, setGivenData] = useState(data)
     const [contextMenu, setContextMenu] = useState(null)
     const [renamingId, setRenamingId] = useState(null)
     const [renameValue, setRenameValue] = useState('')
     const renameInputRef = useRef(null)
+
+    // Inline creation state: { parentId: string|null, isFolder: boolean } or null
+    const [creating, setCreating] = useState(null)
+    const [createValue, setCreateValue] = useState('')
+    const createInputRef = useRef(null)
 
     const socketRef = useRef(null)
     const location = useLocation()
@@ -44,7 +48,6 @@ const FileTree = ({ data }) => {
     }, [contextMenu]);
 
 
-
     useEffect(() => {
         const setupSocket = async () => {
             socketRef.current = await initializeSocket()
@@ -65,7 +68,6 @@ const FileTree = ({ data }) => {
 
             socketRef.current.emit("join", { RoomID, userName: location.state?.userName || "Anonymous" })
         }
-
 
         setupSocket()
 
@@ -169,7 +171,6 @@ const FileTree = ({ data }) => {
     const handleRename = (item) => {
         setRenamingId(item.id);
         setRenameValue(item.name);
-        // Focus the input after render
         setTimeout(() => renameInputRef.current?.focus(), 0);
     }
 
@@ -209,27 +210,97 @@ const FileTree = ({ data }) => {
         setContextMenu({ x: e.clientX, y: e.clientY, item: struct });
     }
 
+    // --- Inline creation logic ---
+
+    const startCreating = (parentId, isFolder) => {
+        setCreating({ parentId, isFolder })
+        setCreateValue('')
+
+        // If creating inside a folder, expand it
+        if (parentId) {
+            const folderName = getItemName(givenData, parentId)
+            if (folderName) {
+                setIsOpen(prev => ({ ...prev, [folderName]: true }))
+            }
+        }
+
+        setTimeout(() => createInputRef.current?.focus(), 0)
+    }
+
+    const commitCreate = () => {
+        if (!creating) return
+        const trimmed = createValue.trim()
+        if (!trimmed) {
+            setCreating(null)
+            return
+        }
+
+        const idObj = new ShortUniqueId({ length: 6 })
+        const newItem = creating.isFolder
+            ? { id: idObj.rnd(), name: trimmed, isFolder: true, children: [] }
+            : { id: idObj.rnd(), name: trimmed, isFolder: false, content: "" }
+
+        let updated
+        if (creating.parentId) {
+            updated = addFolder(givenData, creating.parentId, newItem)
+        } else {
+            updated = [...givenData, newItem]
+        }
+
+        setGivenData(updated)
+        setFileStruct(updated)
+        emitFileStrucuture(updated)
+        setCreating(null)
+        setCreateValue('')
+    }
+
+    const cancelCreate = () => {
+        setCreating(null)
+        setCreateValue('')
+    }
+
     const createFileInFolder = (folderId) => {
-        const name = prompt("Enter file name:");
-        if (!name) return;
-        const idObj = new ShortUniqueId({ length: 6 });
-        const newFile = { id: idObj.rnd(), name, isFolder: false, content: "" };
-        const updated = addFolder(givenData, folderId, newFile);
-        setGivenData(updated);
-        setFileStruct(updated);
-        emitFileStrucuture(updated);
+        startCreating(folderId, false)
     }
 
     const createFolderInFolder = (folderId) => {
-        const name = prompt("Enter folder name:");
-        if (!name) return;
-        const idObj = new ShortUniqueId({ length: 6 });
-        const newFolder = { id: idObj.rnd(), name, isFolder: true, children: [] };
-        const updated = addFolder(givenData, folderId, newFolder);
-        setGivenData(updated);
-        setFileStruct(updated);
-        emitFileStrucuture(updated);
+        startCreating(folderId, true)
     }
+
+    // Inline creation input row component
+    const renderCreateInput = (depth) => {
+        if (!creating) return null
+
+        const icon = creating.isFolder
+            ? 'vscode-icons:default-folder'
+            : (createValue ? getFileIcon(createValue) : 'vscode-icons:default-file')
+
+        return (
+            <div
+                className="flex items-center h-[22px] text-[13px] pr-2"
+                style={{ paddingLeft: `${depth * 16 + 8}px` }}
+            >
+                <span className="w-[16px] mr-0.5 shrink-0"></span>
+                <Icon icon={icon} className="text-[16px] mr-1.5 shrink-0" />
+                <input
+                    ref={createInputRef}
+                    type="text"
+                    value={createValue}
+                    placeholder={creating.isFolder ? "Folder name..." : "File name..."}
+                    onChange={(e) => setCreateValue(e.target.value)}
+                    onBlur={() => commitCreate()}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); commitCreate(); }
+                        if (e.key === 'Escape') { e.preventDefault(); cancelCreate(); }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-[#0a0a0a] text-[13px] text-white border border-[#007fd4] outline-none px-1 py-0 rounded-sm w-full min-w-0 font-inherit"
+                    style={{ lineHeight: '20px' }}
+                />
+            </div>
+        )
+    }
+
 
     const printTree = (data, depth = 0) => {
         const sortedData = [...data].sort((a, b) => b.isFolder - a.isFolder);
@@ -240,7 +311,6 @@ const FileTree = ({ data }) => {
 
             return (
                 <div key={struct.id}>
-                    {/* Tree Item Row */}
                     <div
                         onClick={() => {
                             if (!struct.isFolder) {
@@ -259,7 +329,6 @@ const FileTree = ({ data }) => {
                         `}
                         style={{ paddingLeft: `${depth * 16 + 8}px` }}
                     >
-                        {/* Chevron for folders, spacer for files */}
                         {struct.isFolder ? (
                             <span className={`material-symbols-outlined text-[16px] text-slate-500 mr-0.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                             >chevron_right</span>
@@ -267,14 +336,12 @@ const FileTree = ({ data }) => {
                             <span className="w-[16px] mr-0.5 shrink-0"></span>
                         )}
 
-                        {/* Icon */}
                         {struct.isFolder ? (
                             <Icon icon={getFolderIcon(struct.name, isExpanded)} className="text-[16px] mr-1.5 shrink-0" />
                         ) : (
                             <Icon icon={getFileIcon(struct.name)} className="text-[16px] mr-1.5 shrink-0" />
                         )}
 
-                        {/* Name or Rename Input */}
                         {renamingId === struct.id ? (
                             <input
                                 ref={renameInputRef}
@@ -295,11 +362,11 @@ const FileTree = ({ data }) => {
                         )}
                     </div>
 
-                    {/* Children (indented with border guide) */}
                     {isExpanded && struct.isFolder && struct.children && (
                         <div className="relative">
                             <div className="absolute top-0 bottom-0 border-l border-slate-700/50" style={{ left: `${depth * 16 + 16}px` }}></div>
                             {printTree(struct.children, depth + 1)}
+                            {creating && creating.parentId === struct.id && renderCreateInput(depth + 1)}
                         </div>
                     )}
                 </div>
@@ -311,121 +378,73 @@ const FileTree = ({ data }) => {
     const isFileSelected = (data, id) => {
         for (let struct of data) {
             if (struct.id === id && !struct.isFolder) return true
-
             else if (struct.isFolder && struct.children.length > 0) {
                 if (isFileSelected(struct.children, id)) return true
             }
         }
-
         return false
     }
+
     const addFolder = (data, parentID, newStructure) => {
         return (data.map((struct) => {
             if (struct.id === parentID && struct.isFolder) {
                 return {
                     ...struct,
-                    children: [...struct.children, newStructure] //adding new folder to the children
+                    children: [...struct.children, newStructure]
                 }
             }
-
             else if (struct.isFolder) {
                 return {
                     ...struct,
-                    children: addFolder(struct.children, parentID, newStructure) //recursing through the children 
+                    children: addFolder(struct.children, parentID, newStructure)
                 }
             }
-
-
             else return struct
         }))
     }
 
     const createFolder = () => {
-        const folderName = prompt("Enter the folder name: ")
         let parentId = fileId;
-        const idObj = new ShortUniqueId({ length: 6 })
-        if (!folderName) return
-
-        const currId = idObj.rnd()
-
-        const newFolder = {
-            id: currId,
-            name: folderName,
-            isFolder: true,
-            children: []
-        }
-
-        const currentFileStruct = JSON.parse(JSON.stringify(givenData))
-
-        let updatedFileStruct
         if (isFileSelected(givenData, parentId) || parentId === null) {
-            updatedFileStruct = [...givenData, newFolder]
-            setGivenData(updatedFileStruct)
+            startCreating(null, true)
+        } else {
+            startCreating(parentId, true)
         }
-
-        else {
-            updatedFileStruct = addFolder(givenData, parentId, newFolder)
-            setGivenData(updatedFileStruct)
-        }
-        setGivenData(updatedFileStruct)
-        setFileStruct(updatedFileStruct)
-        emitFileStrucuture(updatedFileStruct)
     }
 
-
     const createFile = () => {
-        const fileName = prompt("Enter the file name: ")
         let parentId = fileId;
-        const idObj = new ShortUniqueId({ length: 6 })
-        if (!fileName) return
-
-        const currId = idObj.rnd()
-
-        const newFile = {
-            id: currId,
-            name: fileName,
-            isFolder: false,
-            content: ""
-        }
-        const currentFileStruct = JSON.parse(JSON.stringify(givenData))
-
-        let updatedFileStruct
-
         if (isFileSelected(givenData, parentId) || parentId === null) {
-            updatedFileStruct = [...givenData, newFile]
-            setGivenData(updatedFileStruct)
+            startCreating(null, false)
+        } else {
+            startCreating(parentId, false)
         }
-
-        else {
-            updatedFileStruct = addFolder(givenData, parentId, newFile)
-            setGivenData(updatedFileStruct)
-        }
-
-        setGivenData(updatedFileStruct);
-        setFileStruct(updatedFileStruct)
-        emitFileStrucuture(updatedFileStruct)
-
     }
 
     return (
         <div className="flex flex-col h-full relative">
-            {/* Project Header */}
-            <div className="flex items-center gap-1 px-2 py-1.5 hover:bg-white/5 cursor-pointer group">
-                <span className="material-symbols-outlined text-[12px] text-slate-400 rotate-90">chevron_right</span>
-                <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight">Code-Sync-Project</span>
-                <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div
+                className="flex items-center gap-1 px-2 py-1.5 hover:bg-white/5 cursor-pointer group"
+                onClick={() => setProjectOpen(prev => !prev)}
+            >
+                <span className={`material-symbols-outlined text-[12px] text-slate-400 transition-transform duration-150 ${projectOpen ? 'rotate-90' : ''}`}>chevron_right</span>
+                <span className="text-[11px] font-bold text-slate-200 uppercase tracking-tight">Project</span>
+                <div
+                    className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <FilePlus size={14} className="text-slate-400 hover:text-white cursor-pointer" onClick={createFile} />
                     <FolderPlus size={14} className="text-slate-400 hover:text-white cursor-pointer" onClick={createFolder} />
                 </div>
             </div>
 
-            {/* File Tree */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar" id='file-tree'>
-                {printTree(givenData)}
-            </div>
+            {projectOpen && (
+                <div className="flex-1 overflow-y-auto custom-scrollbar" id='file-tree'>
+                    {printTree(givenData)}
+                    {creating && creating.parentId === null && renderCreateInput(0)}
+                </div>
+            )}
 
-
-            {/* Context Menu */}
             {contextMenu && (
                 <div
                     className="fixed z-50 bg-[#1e1e1e] border border-[#333] rounded shadow-xl py-1 min-w-[160px] text-[12px]"
