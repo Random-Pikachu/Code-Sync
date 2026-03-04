@@ -1,16 +1,14 @@
 import axios from 'axios'
 
-const API  = axios.create({
-    baseURL: "https://emkc.org/api/v2/piston"
-})
+const SERVER_URL = 'https://code-sync-rlsh.onrender.com'
 
-export const executeCode = async (language, ver, code, codeInput) => {
-    const response = await API.post('/execute', {
-        language : language,
-        version: ver,
-        files : [
+export const executeCode = async (language, version, code, codeInput) => {
+    const response = await axios.post(`${SERVER_URL}/api/execute`, {
+        language: language,
+        version: version,
+        files: [
             {
-                content : code,
+                content: code,
             }
         ],
         stdin: codeInput,

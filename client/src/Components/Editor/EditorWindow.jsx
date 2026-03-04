@@ -13,7 +13,7 @@ import { Icon } from '@iconify/react'
 import WelcomeScreen from './WelcomeScreen'
 
 
-const EditorWindow = () => {
+const EditorWindow = ({ contentGetterRef }) => {
     const { languageName } = useContext(inputContext)
     const socketRef = useRef(null)
 
@@ -49,6 +49,18 @@ const EditorWindow = () => {
     useEffect(() => {
         activeTabIdRef.current = activeTabId
     }, [activeTabId])
+
+    useEffect(() => {
+        if (contentGetterRef) {
+            contentGetterRef.current = () => {
+                if (editorRef.current) {
+                    const model = editorRef.current.getModel()
+                    if (model) return model.getValue()
+                }
+                return tabContentRef.current[activeTabIdRef.current] ?? ''
+            }
+        }
+    }, [activeTabId, contentGetterRef])
 
     useEffect(() => {
         if (!fileId || !fileName) return
