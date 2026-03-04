@@ -9,6 +9,7 @@ import randomcolor from 'randomcolor'
 import hexRgb from 'hex-rgb'
 import toast, { Toaster } from 'react-hot-toast'
 import { X } from 'lucide-react'
+import { Icon } from '@iconify/react'
 import WelcomeScreen from './WelcomeScreen'
 
 
@@ -16,7 +17,6 @@ const EditorWindow = () => {
     const { languageName } = useContext(inputContext)
     const socketRef = useRef(null)
 
-    // Multi-tab state: array of { id, name, content }
     const [openTabs, setOpenTabs] = useState([])
     const [activeTabId, setActiveTabId] = useState(null)
 
@@ -30,17 +30,11 @@ const EditorWindow = () => {
     const saveTimerRef = useRef(null)
     const cursorTimerRef = useRef(null)
     const activeTabIdRef = useRef(null)
-
-    // Per-file content cache — keeps content for all open tabs
     const tabContentRef = useRef({})
-
-    // Track open tab IDs via ref to avoid stale closure issues
     const openTabIdsRef = useRef(new Set())
-
 
     const { data, setData, fileId, setFileId, fileName, setFileName, fileStruct, RoomId, setRoomId } = useContext(CodeDataContext)
 
-    // Helper: find file content from the local file structure tree
     const findFileContent = (struct, targetId) => {
         for (const item of struct) {
             if (item.id === targetId && !item.isFolder) return item.content || ''
@@ -52,47 +46,36 @@ const EditorWindow = () => {
         return null
     }
 
-    // Keep activeTabId ref in sync so closures always have the latest value
     useEffect(() => {
         activeTabIdRef.current = activeTabId
     }, [activeTabId])
 
-
-    // When fileId changes from the file tree, open/activate the tab
     useEffect(() => {
         if (!fileId || !fileName) return
 
-        // If tab is already open, just switch to it
         if (openTabIdsRef.current.has(fileId)) {
             setActiveTabId(fileId)
             return
         }
 
-        // Mark this tab as open
         openTabIdsRef.current.add(fileId)
 
-        // Load content from local file structure (instant, no server round-trip)
         const localContent = findFileContent(fileStruct, fileId) || ''
         tabContentRef.current[fileId] = localContent
 
-        // Also request latest from server (in case another user edited it)
         if (socketRef.current) {
             socketRef.current.emit('file-open', { RoomID, fileId })
         }
 
-        // Add the new tab with content already loaded
         setOpenTabs(prev => [...prev, { id: fileId, name: fileName, content: localContent }])
         setActiveTabId(fileId)
     }, [fileId, fileName])
 
-
-    // When switching tabs, update the editor content
     useEffect(() => {
         if (!activeTabId || !editorRef.current) return
         const model = editorRef.current.getModel()
         if (!model) return
 
-        // Use cached content (always the latest)
         const content = tabContentRef.current[activeTabId] ?? ''
         isRemoteChange.current = true
         model.setValue(content)
@@ -102,11 +85,9 @@ const EditorWindow = () => {
 
     const closeTab = (tabId, e) => {
         e?.stopPropagation()
-        // Remove from cache and tracking
         delete tabContentRef.current[tabId]
         openTabIdsRef.current.delete(tabId)
 
-        // Calculate the new state before calling any setState
         const updated = openTabs.filter(t => t.id !== tabId)
 
         if (activeTabId === tabId) {
@@ -126,7 +107,6 @@ const EditorWindow = () => {
     }
 
     const switchTab = (tab) => {
-        // Save current editor content before switching
         if (editorRef.current && activeTabIdRef.current) {
             const model = editorRef.current.getModel()
             if (model) tabContentRef.current[activeTabIdRef.current] = model.getValue()
@@ -151,27 +131,22 @@ const EditorWindow = () => {
             const position = posData.position
 
             if (!userColorsRef.current[userName]) {
-                userColorsRef.current[userName] = randomcolor(
-                    {
-                        luminosity: 'light',
-                        format: 'hex'
-                    }
-                )
+                userColorsRef.current[userName] = randomcolor({
+                    luminosity: 'light',
+                    format: 'hex'
+                })
             }
             const userColor = userColorsRef.current[userName];
 
             const decoration = {
                 range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column + 1),
-
                 options: {
                     className: `remote-cursor cursor-${userName.replace(/\s+/g, "-")}`,
                     hoverMessage: { value: userName },
                 }
             }
 
-
             newDecorationMap[userName] = [decoration]
-
             addCursorStyle(userName, userColor, position.lineNumber)
         })
 
@@ -180,7 +155,6 @@ const EditorWindow = () => {
         Object.keys(newDecorationMap).forEach(userName => {
             const oldUserDecorations = cursorDecorations[userName] || []
             const newUserDecorations = editorRef.current.deltaDecorations(oldUserDecorations, newDecorationMap[userName])
-
             updatedDecorations[userName] = newUserDecorations
         })
 
@@ -232,11 +206,8 @@ const EditorWindow = () => {
                 justify-content: center;
                 border-radius: 3px;
             }
-
-            
         `
     }
-
 
 
     const hexToRgb = (hex, opacity) => {
@@ -251,8 +222,6 @@ const EditorWindow = () => {
         if (!editor) return;
         editorRef.current = editor
 
-
-        // Debounce cursor position emissions to avoid flooding the server
         editor.onDidChangeCursorPosition((event) => {
             const position = event.position;
 
@@ -271,7 +240,6 @@ const EditorWindow = () => {
 
         editor.focus();
 
-        // If there's an active tab waiting for content to be loaded, load it
         if (activeTabIdRef.current) {
             const content = tabContentRef.current[activeTabIdRef.current] ?? ''
             if (content) {
@@ -362,8 +330,6 @@ const EditorWindow = () => {
     }, [RoomId])
 
 
-
-
     useEffect(() => {
         const setupSocket = async () => {
 
@@ -374,7 +340,6 @@ const EditorWindow = () => {
                 userName: location.state?.userName || "Anonymous",
             })
 
-
             socketRef.current.on('joined', ({ clients, userName, socketId }) => {
                 if (!userColorsRef.current[userName]) {
                     userColorsRef.current[userName] = randomcolor({
@@ -384,24 +349,18 @@ const EditorWindow = () => {
                 }
             })
 
-
-            // File-scoped code change — works with both old server (no fileId) and new server (with fileId)
             socketRef.current.on('code-change', ({ fileId: changedFileId, value }) => {
-                // If old server doesn't send fileId, assume it's for the active file
                 const targetFileId = changedFileId || activeTabIdRef.current
                 if (!targetFileId) return
 
-                // Update our local cache for this file
                 tabContentRef.current[targetFileId] = value
 
-                // Only update the visible editor if we're viewing this file
                 if (targetFileId === activeTabIdRef.current && editorRef.current) {
                     const editor = editorRef.current
                     const model = editor.getModel()
                     if (!model) return
                     const currentValue = model.getValue()
 
-                    // Skip if content is identical (prevents unnecessary updates)
                     if (currentValue === value) return
 
                     const position = editor.getPosition()
@@ -413,23 +372,18 @@ const EditorWindow = () => {
                     if (selections) editor.setSelections(selections)
                 }
 
-                // Also update the tab content state
                 setOpenTabs(prev => prev.map(tab =>
                     tab.id === targetFileId ? { ...tab, content: value } : tab
                 ))
             })
 
-            // Response to our file-open request — server sends us the file content
             socketRef.current.on('file-opened', ({ fileId: openedFileId, content }) => {
-                // Cache the content
                 tabContentRef.current[openedFileId] = content
 
-                // Update tab content
                 setOpenTabs(prev => prev.map(tab =>
                     tab.id === openedFileId ? { ...tab, content } : tab
                 ))
 
-                // If this is the currently active tab, load into editor
                 if (openedFileId === activeTabIdRef.current && editorRef.current) {
                     const model = editorRef.current.getModel()
                     if (model) {
@@ -440,16 +394,13 @@ const EditorWindow = () => {
                 }
             })
 
-            // When another user updates file content (via debounced save), update our cache
             socketRef.current.on('file-content-updated', ({ fileId: updatedFileId, newContent }) => {
                 tabContentRef.current[updatedFileId] = newContent
 
-                // Update tab if open
                 setOpenTabs(prev => prev.map(tab =>
                     tab.id === updatedFileId ? { ...tab, content: newContent } : tab
                 ))
 
-                // If we're viewing this file in the editor, update it
                 if (updatedFileId === activeTabIdRef.current && editorRef.current) {
                     const model = editorRef.current.getModel()
                     if (!model) return
@@ -466,9 +417,7 @@ const EditorWindow = () => {
                 }
             })
 
-
             socketRef.current.on('user-disconnected', ({ userName }) => {
-
                 setPeerPosition((prev) => {
                     const newPositions = { ...prev }
                     delete newPositions[userName]
@@ -480,7 +429,6 @@ const EditorWindow = () => {
                 if (styleEl) {
                     styleEl.remove()
                 }
-
 
                 if (userColorsRef.current[userName]) {
                     delete userColorsRef.current[userName]
@@ -497,7 +445,6 @@ const EditorWindow = () => {
             })
 
         };
-
 
         setupSocket()
 
@@ -523,46 +470,41 @@ const EditorWindow = () => {
             })
         }
 
-
     }, [])
 
 
-    // Get file extension icon helper
-    const getFileIcon = (name) => {
-        if (!name) return 'description'
+    const getVscodeIcon = (name) => {
+        if (!name) return 'vscode-icons:default-file'
         const ext = name.split('.').pop().toLowerCase()
         const iconMap = {
-            js: 'javascript',
-            jsx: 'javascript',
-            ts: 'javascript',
-            tsx: 'javascript',
-            css: 'css',
-            html: 'html',
-            json: 'data_object',
-            md: 'description',
-            py: 'code',
-            java: 'code',
-            cpp: 'code',
-            c: 'code',
+            'js': 'vscode-icons:file-type-js-official',
+            'jsx': 'vscode-icons:file-type-reactjs',
+            'ts': 'vscode-icons:file-type-typescript-official',
+            'tsx': 'vscode-icons:file-type-reactts',
+            'css': 'vscode-icons:file-type-css',
+            'scss': 'vscode-icons:file-type-scss',
+            'html': 'vscode-icons:file-type-html',
+            'json': 'vscode-icons:file-type-json',
+            'md': 'vscode-icons:file-type-markdown',
+            'py': 'vscode-icons:file-type-python',
+            'java': 'vscode-icons:file-type-java',
+            'c': 'vscode-icons:file-type-c',
+            'cpp': 'vscode-icons:file-type-cpp',
+            'go': 'vscode-icons:file-type-go',
+            'rs': 'vscode-icons:file-type-rust',
+            'rb': 'vscode-icons:file-type-ruby',
+            'php': 'vscode-icons:file-type-php',
+            'svg': 'vscode-icons:file-type-svg',
+            'sh': 'vscode-icons:file-type-shell',
+            'bash': 'vscode-icons:file-type-shell',
+            'sql': 'vscode-icons:file-type-sql',
+            'xml': 'vscode-icons:file-type-xml',
+            'yml': 'vscode-icons:file-type-yaml',
+            'yaml': 'vscode-icons:file-type-yaml',
+            'env': 'vscode-icons:file-type-dotenv',
+            'txt': 'vscode-icons:file-type-text',
         }
-        return iconMap[ext] || 'description'
-    }
-
-    const getIconColor = (name) => {
-        if (!name) return 'text-slate-400'
-        const ext = name.split('.').pop().toLowerCase()
-        const colorMap = {
-            js: 'text-yellow-400',
-            jsx: 'text-blue-400',
-            ts: 'text-blue-500',
-            tsx: 'text-blue-400',
-            css: 'text-purple-400',
-            html: 'text-orange-400',
-            json: 'text-yellow-300',
-            md: 'text-slate-400',
-            py: 'text-green-400',
-        }
-        return colorMap[ext] || 'text-slate-400'
+        return iconMap[ext] || 'vscode-icons:default-file'
     }
 
     const getLanguageFromFileName = (name) => {
@@ -587,7 +529,6 @@ const EditorWindow = () => {
         return langMap[ext] || 'plaintext'
     }
 
-    // Determine the language for the active tab
     const activeTab = openTabs.find(t => t.id === activeTabId)
     const editorLanguage = activeTab ? getLanguageFromFileName(activeTab.name) : (languageName === 'c++' ? 'cpp' : languageName)
 
@@ -598,31 +539,39 @@ const EditorWindow = () => {
                 <WelcomeScreen />
             ) : (
                 <>
-                    {/* Tab Bar */}
-                    <div className="h-9 flex items-center bg-background-dark border-b border-border-color overflow-x-auto select-none custom-scrollbar shrink-0">
-                        {openTabs.map(tab => (
-                            <div
-                                key={tab.id}
-                                onClick={() => switchTab(tab)}
-                                className={`flex items-center h-full px-4 gap-2 border-r border-border-color min-w-[120px] cursor-pointer transition-colors shrink-0
-                                    ${tab.id === activeTabId
-                                        ? 'bg-editor-bg border-t-2 border-white'
-                                        : 'bg-background-dark border-t-2 border-transparent hover:bg-[#0f0f0f]'
-                                    }`}
-                            >
-                                <span className={`material-symbols-outlined text-[14px] ${getIconColor(tab.name)}`}>{getFileIcon(tab.name)}</span>
-                                <span className={`text-xs ${tab.id === activeTabId ? 'text-slate-200' : 'text-slate-500'}`}>{tab.name}</span>
-                                <X
-                                    size={14}
-                                    className="text-slate-500 hover:text-slate-300 ml-auto cursor-pointer"
-                                    onClick={(e) => closeTab(tab.id, e)}
-                                />
-                            </div>
-                        ))}
-                        <div className="flex-1"></div>
+                    <div className="h-9 flex items-center bg-background-dark overflow-x-auto select-none custom-scrollbar shrink-0 border-b border-border-color">
+                        {openTabs.map(tab => {
+                            const isActive = tab.id === activeTabId
+                            return (
+                                <div
+                                    key={tab.id}
+                                    onClick={() => switchTab(tab)}
+                                    className={`relative flex items-center h-full px-3 gap-2 min-w-[120px] max-w-[180px] cursor-pointer transition-all duration-200 shrink-0 border-r border-border-color
+                                        ${isActive
+                                            ? 'bg-editor-bg text-slate-200'
+                                            : 'bg-background-dark text-slate-500 hover:text-slate-400 hover:bg-[#0a0a0a]'
+                                        }`}
+                                >
+                                    {isActive && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-blue-500/60 to-transparent" />
+                                    )}
+                                    <Icon icon={getVscodeIcon(tab.name)} className="text-[16px] shrink-0" />
+                                    <span className="text-[12px] truncate">{tab.name}</span>
+                                    <X
+                                        size={13}
+                                        className={`shrink-0 ml-auto rounded-sm p-[1px] transition-colors duration-150
+                                            ${isActive
+                                                ? 'text-slate-500 hover:text-slate-200 hover:bg-white/10'
+                                                : 'opacity-0 group-hover:opacity-100 text-slate-600 hover:text-slate-300 hover:bg-white/10'
+                                            }`}
+                                        onClick={(e) => closeTab(tab.id, e)}
+                                    />
+                                </div>
+                            )
+                        })}
+                        <div className="flex-1 bg-background-dark"></div>
                     </div>
 
-                    {/* Editor Content */}
                     <div className="flex-1 flex overflow-hidden w-full relative">
                         <div id='code-editor' className="flex-1 overflow-hidden h-full w-full">
                             <Editor
@@ -638,17 +587,14 @@ const EditorWindow = () => {
                                     const currentFileId = activeTabIdRef.current
                                     if (!currentFileId) return
 
-                                    // Update local cache
                                     tabContentRef.current[currentFileId] = value
 
-                                    // Live sync to other users — fires immediately, scoped by fileId
                                     socketRef.current.emit('code-change', {
                                         RoomID,
                                         fileId: currentFileId,
                                         value
                                     })
 
-                                    // Debounced DB save — fires 1s after user stops typing
                                     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
                                     saveTimerRef.current = setTimeout(() => {
                                         if (socketRef.current) {
