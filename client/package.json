@@ -19,6 +19,7 @@
     "@vscode/codicons": "^0.0.36",
     "alert": "^6.0.2",
     "axios": "^1.8.2",
+    "boring-avatars": "^2.0.4",
     "core-js-pure": "^3.42.0",
     "dotenv": "^16.4.7",
     "file-icons-js": "github:websemantics/file-icons-js",
