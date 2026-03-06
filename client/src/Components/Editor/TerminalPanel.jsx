@@ -194,14 +194,14 @@ const TerminalPanel = ({ isOpen, onClose, getActiveFileContent, activeFileName }
 
             {/* Stdin Input */}
             {showStdin && (
-                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-color shrink-0">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider shrink-0">stdin</span>
-                    <input
-                        type="text"
+                <div className="flex items-start gap-2 px-3 py-1.5 border-b border-border-color shrink-0">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider shrink-0 pt-1.5">stdin</span>
+                    <textarea
                         value={stdinInput}
                         onChange={(e) => setStdinInput(e.target.value)}
-                        placeholder="Enter input for program..."
-                        className="flex-1 bg-[#0a0a0a] text-[12px] text-slate-200 border border-border-color outline-none px-2 py-1 rounded font-mono placeholder-slate-600 focus:border-[#007fd4] transition-colors"
+                        placeholder={"Enter input for program...\nEach line is a separate input"}
+                        rows={3}
+                        className="flex-1 bg-[#0a0a0a] text-[12px] text-slate-200 border border-border-color outline-none px-2 py-1.5 rounded font-mono placeholder-slate-600 focus:border-[#007fd4] transition-colors resize-y min-h-[36px] max-h-[200px] custom-scrollbar"
                     />
                 </div>
             )}
