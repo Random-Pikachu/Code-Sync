@@ -4,20 +4,28 @@ import { executeCode } from '../../API/execution'
 import { CodeDataContext } from '../Sidebar/CodeData'
 
 const LANG_MAP = {
-    'js': { language: 'javascript', version: '1.32.3' },
-    'jsx': { language: 'javascript', version: '1.32.3' },
-    'ts': { language: 'typescript', version: '5.0.3' },
-    'tsx': { language: 'typescript', version: '5.0.3' },
-    'py': { language: 'python', version: '3.10.0' },
-    'java': { language: 'java', version: '15.0.2' },
-    'c': { language: 'c', version: '10.2.0' },
-    'cpp': { language: 'c++', version: '10.2.0' },
-    'go': { language: 'go', version: '1.16.2' },
-    'rs': { language: 'rust', version: '1.68.2' },
-    'rb': { language: 'ruby', version: '3.0.1' },
-    'php': { language: 'php', version: '8.2.3' },
-    'sh': { language: 'bash', version: '5.2.0' },
-    'bash': { language: 'bash', version: '5.2.0' },
+    'js': { id: 102, name: 'JavaScript (Node.js 22.08.0)' },
+    'jsx': { id: 102, name: 'JavaScript (Node.js 22.08.0)' },
+    'ts': { id: 101, name: 'TypeScript (5.6.2)' },
+    'tsx': { id: 101, name: 'TypeScript (5.6.2)' },
+    'py': { id: 100, name: 'Python (3.12.5)' },
+    'java': { id: 91, name: 'Java (JDK 17.0.6)' },
+    'c': { id: 104, name: 'C (Clang 18.1.8)' },
+    'cpp': { id: 105, name: 'C++ (GCC 14.1.0)' },
+    'go': { id: 107, name: 'Go (1.23.5)' },
+    'rs': { id: 108, name: 'Rust (1.85.0)' },
+    'rb': { id: 72, name: 'Ruby (2.7.0)' },
+    'php': { id: 98, name: 'PHP (8.3.11)' },
+    'sh': { id: 46, name: 'Bash (5.0.0)' },
+    'bash': { id: 46, name: 'Bash (5.0.0)' },
+    'cs': { id: 51, name: 'C# (Mono 6.6.0.161)' },
+    'kt': { id: 111, name: 'Kotlin (2.1.10)' },
+    'swift': { id: 83, name: 'Swift (5.2.3)' },
+    'r': { id: 99, name: 'R (4.4.1)' },
+    'scala': { id: 112, name: 'Scala (3.4.2)' },
+    'sql': { id: 82, name: 'SQL (SQLite 3.27.2)' },
+    'lua': { id: 64, name: 'Lua (5.3.5)' },
+    'dart': { id: 90, name: 'Dart (2.19.2)' },
 }
 
 const TerminalPanel = ({ isOpen, onClose, getActiveFileContent, activeFileName }) => {
@@ -57,30 +65,32 @@ const TerminalPanel = ({ isOpen, onClose, getActiveFileContent, activeFileName }
         }
 
         setIsRunning(true)
-        addOutput('system', `$ Running ${activeFileName} (${langInfo.language} ${langInfo.version})...`)
+        addOutput('system', `$ Running ${activeFileName} (${langInfo.name})...`)
 
         const startTime = performance.now()
 
         try {
-            const response = await executeCode(langInfo.language, langInfo.version, code, stdinInput)
-            const result = response.run
+            const result = await executeCode(langInfo.id, code, stdinInput)
             const elapsed = ((performance.now() - startTime) / 1000).toFixed(2)
 
+            if (result.compile_output) {
+                addOutput('stderr', result.compile_output)
+            }
             if (result.stdout) {
                 addOutput('stdout', result.stdout)
             }
             if (result.stderr) {
                 addOutput('stderr', result.stderr)
             }
-            if (!result.stdout && !result.stderr) {
+            if (!result.stdout && !result.stderr && !result.compile_output) {
                 addOutput('system', '(no output)')
             }
 
-            const exitCode = result.code ?? 0
-            const status = exitCode === 0 ? 'success' : 'error'
-            addOutput(status, `\n[Done] exited with code ${exitCode} in ${elapsed}s`)
+            const statusDesc = result.status?.description || 'Unknown'
+            const isSuccess = result.status?.id === 3 // 3 = Accepted
+            addOutput(isSuccess ? 'success' : 'error', `\n[Done] ${statusDesc} in ${elapsed}s (${result.time || '?'}s CPU, ${result.memory ? (result.memory / 1024).toFixed(1) + 'MB' : '?'} memory)`)
         } catch (error) {
-            addOutput('error', `Execution failed: ${error.message}`)
+            addOutput('error', `Execution failed: ${error.response?.data?.error || error.message}`)
         } finally {
             setIsRunning(false)
         }

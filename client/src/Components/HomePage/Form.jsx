@@ -85,7 +85,7 @@ const Form = () => {
             <button
                 type="button"
                 onClick={handleAction}
-                className="w-full h-12 bg-primary text-white text-sm font-bold rounded-lg hover:opacity-90 transition-opacity"
+                className="w-full h-12 bg-[#d4d4d4] text-black text-sm font-bold rounded-lg hover:bg-[#c0c0c0] transition-colors"
             >
                 {mode === 'join' ? 'Join Room' : 'Start Session'}
             </button>
