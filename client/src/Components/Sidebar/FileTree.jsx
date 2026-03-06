@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
 import ShortUniqueId from 'short-unique-id';
 import { Icon } from '@iconify/react';
-import { FilePlus, FolderPlus, Pencil } from 'lucide-react';
+import { FilePlus, FolderPlus, Pencil, Trash2 } from 'lucide-react';
 import { useLocation, useParams } from "react-router-dom"
 
 import { initializeSocket } from '../../Connection/socket';
@@ -208,6 +208,33 @@ const FileTree = ({ data }) => {
         e.preventDefault();
         e.stopPropagation();
         setContextMenu({ x: e.clientX, y: e.clientY, item: struct });
+    }
+
+    const handleBackgroundContextMenu = (e) => {
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY, item: null });
+    }
+
+    const deleteItem = (data, itemId) => {
+        return data
+            .filter((struct) => struct.id !== itemId)
+            .map((struct) => {
+                if (struct.isFolder && struct.children) {
+                    return { ...struct, children: deleteItem(struct.children, itemId) };
+                }
+                return struct;
+            });
+    }
+
+    const handleDelete = (itemId) => {
+        const updated = deleteItem(givenData, itemId);
+        setGivenData(updated);
+        setFileStruct(updated);
+        emitFileStrucuture(updated);
+        if (fileId === itemId) {
+            setFileId(null);
+            setFileName(null);
+        }
     }
 
     // --- Inline creation logic ---
@@ -439,7 +466,11 @@ const FileTree = ({ data }) => {
             </div>
 
             {projectOpen && (
-                <div className="flex-1 overflow-y-auto custom-scrollbar" id='file-tree'>
+                <div
+                    className="flex-1 overflow-y-auto custom-scrollbar"
+                    id='file-tree'
+                    onContextMenu={handleBackgroundContextMenu}
+                >
                     {printTree(givenData)}
                     {creating && creating.parentId === null && renderCreateInput(0)}
                 </div>
@@ -451,32 +482,61 @@ const FileTree = ({ data }) => {
                     style={{ top: contextMenu.y, left: contextMenu.x }}
                     onClick={() => setContextMenu(null)}
                 >
-                    {contextMenu.item.isFolder && (
+                    {/* New File & New Folder — only for folders or empty space */}
+                    {(!contextMenu.item || contextMenu.item.isFolder) && (
                         <>
                             <div
                                 className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
-                                onClick={() => { createFileInFolder(contextMenu.item.id); setContextMenu(null); }}
+                                onClick={() => {
+                                    if (contextMenu.item?.isFolder) {
+                                        createFileInFolder(contextMenu.item.id);
+                                    } else {
+                                        startCreating(null, false);
+                                    }
+                                    setContextMenu(null);
+                                }}
                             >
                                 <FilePlus size={14} />
                                 New File
                             </div>
+
                             <div
                                 className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
-                                onClick={() => { createFolderInFolder(contextMenu.item.id); setContextMenu(null); }}
+                                onClick={() => {
+                                    if (contextMenu.item?.isFolder) {
+                                        createFolderInFolder(contextMenu.item.id);
+                                    } else {
+                                        startCreating(null, true);
+                                    }
+                                    setContextMenu(null);
+                                }}
                             >
                                 <FolderPlus size={14} />
                                 New Folder
                             </div>
-                            <div className="border-t border-[#333] my-0.5"></div>
                         </>
                     )}
-                    <div
-                        className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
-                        onClick={() => { handleRename(contextMenu.item); setContextMenu(null); }}
-                    >
-                        <Pencil size={14} />
-                        Rename
-                    </div>
+
+                    {/* Rename & Delete - only when right-clicking an actual item */}
+                    {contextMenu.item && (
+                        <>
+                            {contextMenu.item.isFolder && <div className="border-t border-[#333] my-0.5"></div>}
+                            <div
+                                className="px-3 py-1.5 text-slate-300 hover:bg-[#094771] hover:text-white cursor-pointer flex items-center gap-2"
+                                onClick={() => { handleRename(contextMenu.item); setContextMenu(null); }}
+                            >
+                                <Pencil size={14} />
+                                Rename
+                            </div>
+                            <div
+                                className="px-3 py-1.5 text-red-400 hover:bg-[#5a1d1d] hover:text-red-300 cursor-pointer flex items-center gap-2"
+                                onClick={() => { handleDelete(contextMenu.item.id); setContextMenu(null); }}
+                            >
+                                <Trash2 size={14} />
+                                Delete
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>
