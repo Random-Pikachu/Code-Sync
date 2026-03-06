@@ -49,11 +49,7 @@ const Sidebar = ({ onToggleTerminal }) => {
           <UsersIcon size={20} strokeWidth={1.5} />
         </div>
 
-        <div className="mt-auto flex flex-col gap-2">
-          <div className="p-2.5 text-slate-600 hover:text-slate-300 cursor-pointer transition-colors">
-            <Settings size={20} strokeWidth={1.5} />
-          </div>
-        </div>
+        
       </aside>
 
       <Resizable
